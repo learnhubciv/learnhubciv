@@ -146,19 +146,8 @@
                     console.log("Licence active trouvée:", userLicense);
                     console.log("Temps restant:", remainingHours + "h " + remainingMinutes + "m");
                     
-                    showLicenseMessage(
-                        "Licence active ✓", 
-                        `Temps restant: ${remainingHours}h ${remainingMinutes}m`, 
-                        false
-                    );
-                    
-                    // Mettre à jour l'indicateur de licence
+                    // Mettre à jour l'indicateur de licence (pas de notification SweetAlert)
                     updateLicenseIndicator();
-                    
-                    // Masquer le message après 3 secondes
-                    setTimeout(() => {
-                        hideLicenseMessage();
-                    }, 3000);
                     
                     // Démarrer le bot
                     startBot();
@@ -221,11 +210,16 @@
             }, 30000);
         }
 
-        // Afficher un message de licence
+        // Afficher un message de licence (uniquement pour les erreurs)
         function showLicenseMessage(title, message, isError = false) {
             const existingMessage = document.getElementById('licenseMessage');
             if (existingMessage) {
                 existingMessage.remove();
+            }
+            
+            // Afficher uniquement les messages d'erreur, pas les messages de succès
+            if (!isError) {
+                return;
             }
             
             const messageDiv = document.createElement('div');
@@ -235,7 +229,7 @@
                 top: 20px;
                 left: 50%;
                 transform: translateX(-50%);
-                background: ${isError ? 'rgba(220, 53, 69, 0.95)' : 'rgba(40, 167, 69, 0.95)'};
+                background: rgba(220, 53, 69, 0.95);
                 color: white;
                 padding: 15px 30px;
                 border-radius: 8px;
@@ -245,32 +239,30 @@
                 text-align: center;
                 max-width: 90%;
                 backdrop-filter: blur(10px);
-                border: 1px solid ${isError ? 'rgba(220, 53, 69, 0.3)' : 'rgba(40, 167, 69, 0.3)'};
+                border: 1px solid rgba(220, 53, 69, 0.3);
             `;
             
             messageDiv.innerHTML = `
                 <strong style="font-size: 16px;">${title}</strong><br>
                 <span style="font-size: 14px;">${message}</span>
-                ${isError ? '<br><button id="goToStore" style="margin-top: 10px; padding: 8px 16px; background: white; color: #dc3545; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Acheter une licence</button>' : ''}
+                <br><button id="goToStore" style="margin-top: 10px; padding: 8px 16px; background: white; color: #dc3545; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Acheter une licence</button>
             `;
             
             document.body.appendChild(messageDiv);
             
-            if (isError) {
-                const goToStoreBtn = document.getElementById('goToStore');
-                if (goToStoreBtn) {
-                    goToStoreBtn.addEventListener('click', () => {
-                        window.location.href = 'accueil.html';
-                    });
-                }
-                
-                // Rediriger automatiquement après 5 secondes si licence invalide
-                setTimeout(() => {
-                    if (!isLicenseValid) {
-                        window.location.href = 'accueil.html';
-                    }
-                }, 5000);
+            const goToStoreBtn = document.getElementById('goToStore');
+            if (goToStoreBtn) {
+                goToStoreBtn.addEventListener('click', () => {
+                    window.location.href = 'accueil.html';
+                });
             }
+            
+            // Rediriger automatiquement après 5 secondes si licence invalide
+            setTimeout(() => {
+                if (!isLicenseValid) {
+                    window.location.href = 'accueil.html';
+                }
+            }, 5000);
         }
 
         // Masquer le message de licence
