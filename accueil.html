@@ -759,7 +759,7 @@
     <script src="https://js.paystack.co/v1/inline.js"></script>
     
     <style>
-        /* Styles existants conservés */
+        /* Styles du deuxième fichier (accueil2.html) */
         * {
             margin: 0;
             padding: 0;
@@ -1869,34 +1869,584 @@
         }
 
         /* Responsive Design Amélioré */
+
+        /* Tablettes en mode portrait */
         @media (max-width: 768px) {
+            .app-container {
+                max-width: 100%;
+                padding: 0 10px 90px;
+            }
+            
+            .app-header {
+                padding: 15px 10px;
+            }
+            
+            .logo-text {
+                font-size: 1.2rem;
+            }
+            
+            .welcome-section {
+                padding: 15px 10px;
+            }
+            
+            .welcome-title {
+                font-size: 1.6rem;
+            }
+            
+            .welcome-subtitle {
+                font-size: 0.9rem;
+            }
+            
+            .featured-cards {
+                margin: 0 10px 15px;
+                gap: 8px;
+            }
+            
+            .featured-card {
+                padding: 12px 8px;
+                min-height: 110px;
+            }
+            
+            .featured-icon {
+                font-size: 1.5rem;
+                height: 45px;
+                width: 45px;
+                margin-bottom: 8px;
+            }
+            
+            .featured-title {
+                font-size: 0.9rem;
+            }
+            
+            .featured-desc {
+                font-size: 0.75rem;
+            }
+            
+            .section-title {
+                margin: 0 10px 12px;
+            }
+            
             .games-grid {
-                grid-template-columns: repeat(2, 1fr);
+                margin: 0 10px 15px;
                 gap: 10px;
+            }
+            
+            .tutorial-section {
+                margin: 0 10px 15px;
+            }
+            
+            .tutorial-banner {
+                padding: 20px;
+            }
+            
+            .tutorial-icon {
+                width: 60px;
+                height: 60px;
+                font-size: 25px;
+            }
+            
+            .tutorial-title {
+                font-size: 1.3rem;
+            }
+            
+            .tutorial-subtitle {
+                font-size: 0.9rem;
+            }
+            
+            .referral-banner {
+                margin: 0 10px 15px;
+                padding: 12px;
+            }
+            
+            .modal-overlay {
+                padding: 15px;
+            }
+            
+            .subscription-modal {
+                max-width: 90%;
+                max-height: 90vh;
+            }
+            
+            .notification-system {
+                right: 10px;
+                left: 10px;
+                max-width: calc(100% - 20px);
+            }
+            
+            .bottom-nav {
+                padding: 10px 0;
+            }
+            
+            .nav-item {
+                font-size: 10px;
+            }
+            
+            .nav-icon {
+                font-size: 16px;
+            }
+        }
+
+        /* Smartphones en mode paysage */
+        @media (max-width: 768px) and (orientation: landscape) {
+            .app-container {
+                padding-bottom: 70px;
+            }
+            
+            .welcome-section {
+                padding: 10px;
+            }
+            
+            .welcome-title {
+                font-size: 1.4rem;
+                margin-bottom: 5px;
+            }
+            
+            .welcome-subtitle {
+                font-size: 0.8rem;
+                margin-bottom: 10px;
+            }
+            
+            .featured-cards {
+                margin-bottom: 10px;
+                padding-bottom: 3px;
+            }
+            
+            .games-grid {
+                gap: 8px;
+            }
+            
+            .tutorial-banner {
+                padding: 15px;
+            }
+            
+            .tutorial-content {
+                gap: 15px;
+            }
+            
+            .bottom-nav {
+                padding: 8px 0;
+            }
+        }
+
+        /* Smartphones en mode portrait (petits écrans) */
+        @media (max-width: 480px) {
+            .app-container {
+                padding: 0 8px 85px;
+            }
+            
+            .app-header {
+                padding: 12px 8px 8px;
+            }
+            
+            .logo-icon {
+                width: 32px;
+                height: 32px;
+                font-size: 16px;
+            }
+            
+            .logo-text {
+                font-size: 1.2rem;
+            }
+            
+            .icon-btn {
+                width: 32px;
+                height: 32px;
+                font-size: 14px;
+            }
+            
+            .welcome-section {
+                padding: 12px 8px;
+            }
+            
+            .welcome-title {
+                font-size: 1.4rem;
+                margin-bottom: 8px;
+            }
+            
+            .welcome-subtitle {
+                font-size: 0.85rem;
+                margin-bottom: 15px;
+                line-height: 1.4;
+            }
+            
+            .featured-cards {
+                margin: 0 8px 12px;
+                gap: 6px;
+            }
+            
+            .featured-card {
+                padding: 10px 6px;
+                min-height: 100px;
+            }
+            
+            .featured-icon {
+                font-size: 1.3rem;
+                height: 40px;
+                width: 40px;
+                margin-bottom: 6px;
+            }
+            
+            .featured-title {
+                font-size: 0.85rem;
+            }
+            
+            .featured-desc {
+                font-size: 0.7rem;
+            }
+            
+            .featured-badge {
+                top: 5px;
+                right: 5px;
+                font-size: 0.55rem;
+                padding: 2px 5px;
+            }
+            
+            .section-title {
+                margin: 0 8px 12px;
+                font-size: 1.2rem;
+            }
+            
+            .see-all {
+                font-size: 0.85rem;
+            }
+            
+            .games-grid {
+                margin: 0 8px 15px;
+                gap: 10px;
+            }
+            
+            .game-card {
+                border-radius: 10px;
+            }
+            
+            .game-image {
+                height: 100px;
+            }
+            
+            .game-title {
+                font-size: 13px;
+                margin-bottom: 4px;
+            }
+            
+            .game-desc {
+                font-size: 10px;
+            }
+            
+            .game-meta {
+                height: 25px;
+                margin-bottom: 6px;
+            }
+            
+            .game-rating {
+                font-size: 10px;
+            }
+            
+            .buy-button {
+                padding: 7px 12px;
+                font-size: 11px;
+            }
+            
+            .tutorial-section {
+                margin: 0 8px 12px;
+            }
+            
+            .tutorial-banner {
+                padding: 15px;
+            }
+            
+            .tutorial-content {
+                flex-direction: column;
+                text-align: center;
+                gap: 15px;
+            }
+            
+            .tutorial-icon {
+                width: 50px;
+                height: 50px;
+                font-size: 22px;
+            }
+            
+            .tutorial-title {
+                font-size: 1.2rem;
+                justify-content: center;
+            }
+            
+            .tutorial-subtitle {
+                font-size: 0.85rem;
+            }
+            
+            .tutorial-cta {
+                padding: 8px 16px;
+                font-size: 13px;
+            }
+            
+            .tutorial-badge {
+                top: 10px;
+                right: 10px;
+                font-size: 0.7rem;
+                padding: 4px 10px;
+            }
+            
+            .referral-banner {
+                margin: 0 8px 12px;
+                padding: 12px;
+            }
+            
+            .referral-banner h3 {
+                font-size: 1rem;
+            }
+            
+            .referral-banner p {
+                font-size: 12px;
+            }
+            
+            .banner-btn {
+                padding: 7px 14px;
+                font-size: 11px;
+            }
+            
+            .modal-overlay {
+                padding: 10px;
+            }
+            
+            .subscription-modal {
+                max-width: 95%;
+                border-radius: 10px;
+            }
+            
+            .modal-header {
+                padding: 15px;
+            }
+            
+            .modal-title {
+                font-size: 1.2rem;
+                margin-bottom: 3px;
+            }
+            
+            .modal-subtitle {
+                font-size: 0.85rem;
+            }
+            
+            .modal-close {
+                width: 28px;
+                height: 28px;
+                top: 12px;
+                right: 12px;
+                font-size: 14px;
+            }
+            
+            .notification-system {
+                top: 70px;
+                right: 8px;
+                left: 8px;
+            }
+            
+            .notification {
+                padding: 12px;
+            }
+            
+            .notification-icon {
+                width: 32px;
+                height: 32px;
+                font-size: 14px;
+            }
+            
+            .notification-title {
+                font-size: 13px;
+            }
+            
+            .notification-message {
+                font-size: 12px;
+            }
+            
+            .bottom-nav {
+                padding: 10px 0 8px;
+            }
+            
+            .nav-item {
+                font-size: 9px;
+                gap: 3px;
+            }
+            
+            .nav-icon {
+                font-size: 15px;
+            }
+        }
+
+        /* Très petits écrans (iPhone SE, etc.) */
+        @media (max-width: 375px) {
+            .app-container {
+                padding: 0 6px 80px;
+            }
+            
+            .app-header {
+                padding: 10px 6px 6px;
+            }
+            
+            .welcome-title {
+                font-size: 1.3rem;
+            }
+            
+            .welcome-subtitle {
+                font-size: 0.8rem;
+            }
+            
+            .featured-cards {
+                margin: 0 6px 10px;
+                gap: 5px;
+            }
+            
+            .featured-card {
+                padding: 8px 5px;
+                min-height: 90px;
+            }
+            
+            .featured-icon {
+                font-size: 1.2rem;
+                height: 35px;
+                width: 35px;
+                margin-bottom: 5px;
+            }
+            
+            .featured-title {
+                font-size: 0.8rem;
+            }
+            
+            .featured-desc {
+                font-size: 0.65rem;
+            }
+            
+            .section-title {
+                margin: 0 6px 10px;
+                font-size: 1.1rem;
+            }
+            
+            .see-all {
+                font-size: 0.8rem;
+            }
+            
+            .games-grid {
+                margin: 0 6px 12px;
+                gap: 8px;
+            }
+            
+            .game-title {
+                font-size: 12px;
+            }
+            
+            .game-desc {
+                font-size: 9px;
+            }
+            
+            .game-meta {
+                height: 22px;
+                margin-bottom: 5px;
+            }
+            
+            .tutorial-banner {
+                padding: 12px;
+            }
+            
+            .tutorial-icon {
+                width: 45px;
+                height: 45px;
+                font-size: 20px;
+            }
+            
+            .tutorial-title {
+                font-size: 1.1rem;
+            }
+            
+            .modal-header {
+                padding: 12px;
+            }
+            
+            .modal-title {
+                font-size: 1.1rem;
+            }
+            
+            .bottom-nav {
+                padding: 8px 0 6px;
+            }
+            
+            .nav-item {
+                font-size: 8px;
+            }
+            
+            .nav-icon {
+                font-size: 14px;
+            }
+        }
+
+        /* Écrans larges (desktop) */
+        @media (min-width: 1200px) {
+            .app-container {
+                max-width: 1100px;
+            }
+            
+            .games-grid {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 20px;
+            }
+            
+            .welcome-section {
+                padding: 30px 20px;
+            }
+            
+            .welcome-title {
+                font-size: 2.2rem;
+            }
+            
+            .welcome-subtitle {
+                font-size: 1.1rem;
             }
             
             .featured-cards {
                 grid-template-columns: repeat(3, 1fr);
-                gap: 8px;
-            }
-        }
-
-        @media (min-width: 768px) {
-            .games-grid {
-                grid-template-columns: repeat(3, 1fr);
                 gap: 15px;
-            }
-        }
-
-        @media (min-width: 1200px) {
-            .app-container {
-                max-width: 1100px;
-                margin: 0 auto;
+                margin: 0 20px 25px;
             }
             
-            .games-grid {
-                grid-template-columns: repeat(4, 1fr);
-                gap: 20px;
+            .featured-card {
+                padding: 20px 15px;
+                min-height: 140px;
+            }
+            
+            .featured-icon {
+                font-size: 2.2rem;
+                height: 60px;
+                width: 60px;
+                margin-bottom: 15px;
+            }
+            
+            .featured-title {
+                font-size: 1.1rem;
+            }
+            
+            .featured-desc {
+                font-size: 0.9rem;
+            }
+            
+            .tutorial-section {
+                margin: 0 20px 25px;
+            }
+            
+            .tutorial-banner {
+                padding: 30px;
+            }
+            
+            .tutorial-icon {
+                width: 80px;
+                height: 80px;
+                font-size: 35px;
+            }
+            
+            .tutorial-title {
+                font-size: 1.8rem;
+            }
+            
+            .tutorial-subtitle {
+                font-size: 1.1rem;
             }
         }
 
@@ -1918,6 +2468,56 @@
             
             .game-desc {
                 color: var(--text-light);
+            }
+        }
+
+        /* Support pour le texte plus grand (accessibilité) */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+            
+            .featured-badge {
+                animation: none;
+            }
+            
+            .featured-animation::after {
+                animation: none;
+                display: none;
+            }
+            
+            .tutorial-icon {
+                animation: none;
+            }
+            
+            .tutorial-badge {
+                animation: none;
+            }
+        }
+
+        /* Correction pour le défilement sur iOS */
+        @supports (-webkit-touch-callout: none) {
+            body {
+                min-height: -webkit-fill-available;
+            }
+            
+            .app-container {
+                padding-bottom: calc(100px + env(safe-area-inset-bottom));
+            }
+            
+            .bottom-nav {
+                padding-bottom: max(12px, env(safe-area-inset-bottom));
+            }
+        }
+
+        /* Responsive Grid pour tablettes */
+        @media (min-width: 768px) {
+            .games-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 15px;
             }
         }
     </style>
@@ -2513,9 +3113,6 @@
             if (tutorialBanner) {
                 tutorialBanner.style.animation = `fadeInUp 0.7s ease forwards 0.5s`;
                 tutorialBanner.style.opacity = '0';
-                
-                // Ajouter des particules d'animation
-                createParticles();
             }
 
             // Interaction avec la navigation
