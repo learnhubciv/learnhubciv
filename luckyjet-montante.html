@@ -1,0 +1,1606 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LuckyJet - Prédiction Automatique</title>
+    <style>
+        :root {
+            --primary-color: #8a00e1;
+            --primary-dark: #6b00b3;
+            --success-color: #00FF00;
+            --text-color: #ffffff;
+            --bg-color: #141414;
+            --accent-color: blueviolet;
+            --warning-color: #ffcc00;
+            --info-color: #0096FF;
+            --wait-color: #FFA500;
+            --validation-color: #FF69B4;
+            --state-check-color: #00FFFF;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+            background-color: var(--bg-color);
+            background-image: radial-gradient(circle at 50% 50%, #1a1a2e 0%, #121212 100%);
+            color: var(--text-color);
+            text-align: center;
+            min-height: 100vh;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            position: relative;
+            animation: fadeIn 1.2s ease-in-out;
+            padding: 20px;
+            max-width: 100%;
+            z-index: 1;
+        }
+        
+        .stars {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+        
+        .star {
+            position: absolute;
+            background-color: white;
+            border-radius: 50%;
+            animation: twinkle var(--duration) infinite ease-in-out;
+            opacity: var(--opacity);
+        }
+        
+        @keyframes twinkle {
+            0%, 100% { opacity: var(--opacity); }
+            50% { opacity: 0.2; }
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .circle-wrapper {
+            position: relative;
+            display: inline-block;
+            margin: 30px 0;
+        }
+        
+        .circle-outer {
+            border: 6px solid rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            width: 240px;
+            height: 240px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 
+                0 0 25px rgba(255, 255, 255, 0.3),
+                inset 0 0 15px rgba(138, 0, 225, 0.5);
+            position: relative;
+            background: rgba(20, 20, 20, 0.5);
+            backdrop-filter: blur(5px);
+            transition: all 0.3s ease;
+        }
+        
+        .circle-outer:hover {
+            transform: scale(1.03);
+            box-shadow: 
+                0 0 35px rgba(255, 255, 255, 0.4),
+                inset 0 0 20px rgba(138, 0, 225, 0.7);
+        }
+        
+        .circle-inner {
+            border: 4px solid var(--accent-color);
+            border-radius: 50%;
+            width: 210px;
+            height: 210px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 42px;
+            color: var(--success-color);
+            font-weight: bold;
+            position: relative;
+            animation: glowPulse 2s infinite;
+            background: rgba(10, 10, 20, 0.7);
+            text-shadow: 0 0 10px rgba(0, 255, 0, 0.7);
+            box-shadow: inset 0 0 20px rgba(138, 0, 225, 0.3);
+        }
+        
+        @keyframes glowPulse {
+            0%, 100% { 
+                box-shadow: inset 0 0 20px rgba(138, 0, 225, 0.3);
+                text-shadow: 0 0 10px rgba(0, 255, 0, 0.7);
+            }
+            50% { 
+                box-shadow: inset 0 0 30px rgba(138, 0, 225, 0.7);
+                text-shadow: 0 0 15px rgba(0, 255, 0, 1);
+            }
+        }
+        
+        .circle-outer::before {
+            content: '';
+            position: absolute;
+            top: -8px;
+            left: -8px;
+            right: -8px;
+            bottom: -8px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            border-top: 2px solid rgba(255, 255, 255, 0.7);
+            border-right: 2px solid var(--primary-color);
+            animation: spin 8s linear infinite;
+            pointer-events: none;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .time {
+            font-size: 26px;
+            margin-bottom: 12px;
+            transition: all 0.5s;
+            background: linear-gradient(to right, #ffffff, #8a00e1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-fill-color: transparent;
+            font-weight: bold;
+        }
+        
+        .hacks-bots {
+            font-size: 24px;
+            margin: 15px 0;
+            padding: 12px 25px;
+            background: linear-gradient(135deg, #8a00e1, #ff69b4, #00ffff);
+            border-radius: 25px;
+            display: inline-block;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 15px rgba(138, 0, 225, 0.4);
+            animation: hacksGlow 3s infinite alternate;
+            font-weight: bold;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .hacks-bots::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+            transform: rotate(45deg);
+            animation: shine 4s infinite;
+        }
+        
+        @keyframes hacksGlow {
+            0% { 
+                box-shadow: 0 0 20px rgba(138, 0, 225, 0.6);
+                transform: scale(1);
+            }
+            50% { 
+                box-shadow: 0 0 30px rgba(255, 105, 180, 0.8), 0 0 40px rgba(0, 255, 255, 0.6);
+                transform: scale(1.05);
+            }
+            100% { 
+                box-shadow: 0 0 20px rgba(138, 0, 225, 0.6);
+                transform: scale(1);
+            }
+        }
+        
+        @keyframes shine {
+            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+        }
+        
+        .luckyjet {
+            font-size: 42px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            margin-bottom: 20px;
+            text-shadow: 0 2px 10px rgba(138, 0, 225, 0.7);
+            position: relative;
+            display: inline-block;
+        }
+        
+        .lucky {
+            color: white;
+        }
+        
+        .jet {
+            color: var(--primary-color);
+            position: relative;
+        }
+        
+        .jet::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(to right, transparent, var(--primary-color), transparent);
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            10% { transform: scale(1.1); }
+            20% { transform: scale(1); }
+            30% { transform: scale(1.1); }
+            40% { transform: scale(1); }
+            100% { transform: scale(1); }
+        }
+        
+        .pulse {
+            animation: pulse 2s;
+        }
+        
+        @media (max-width: 768px) {
+            .circle-outer {
+                width: 200px;
+                height: 200px;
+            }
+            
+            .circle-inner {
+                width: 175px;
+                height: 175px;
+                font-size: 36px;
+            }
+            
+            .luckyjet {
+                font-size: 36px;
+            }
+            
+            .time, .countdown {
+                font-size: 22px;
+            }
+            
+            .hacks-bots {
+                font-size: 20px;
+                padding: 10px 20px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .circle-outer {
+                width: 180px;
+                height: 180px;
+            }
+            
+            .circle-inner {
+                width: 155px;
+                height: 155px;
+                font-size: 32px;
+            }
+            
+            .luckyjet {
+                font-size: 32px;
+            }
+            
+            .time, .countdown {
+                font-size: 20px;
+            }
+            
+            .hacks-bots {
+                font-size: 18px;
+                padding: 8px 16px;
+            }
+        }
+        
+        .status-indicator {
+            margin-top: 20px;
+            font-size: 16px;
+            padding: 8px 15px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            display: inline-block;
+        }
+        
+        .flying-indicator {
+            margin-top: 10px;
+            padding: 5px 12px;
+            border-radius: 15px;
+            background: rgba(255, 204, 0, 0.15);
+            border: 1px solid var(--warning-color);
+            color: var(--warning-color);
+            font-size: 14px;
+            display: inline-block;
+            animation: flyingGlow 1.5s infinite alternate;
+        }
+        
+        @keyframes flyingGlow {
+            0% { box-shadow: 0 0 3px rgba(255, 204, 0, 0.3); }
+            100% { box-shadow: 0 0 8px rgba(255, 204, 0, 0.6); }
+        }
+        
+        .verification-indicator {
+            margin-top: 10px;
+            padding: 5px 12px;
+            border-radius: 15px;
+            background: rgba(0, 150, 255, 0.15);
+            border: 1px solid var(--info-color);
+            color: var(--info-color);
+            font-size: 14px;
+            display: inline-block;
+        }
+        
+        .wait-indicator {
+            margin-top: 10px;
+            padding: 5px 12px;
+            border-radius: 15px;
+            background: rgba(255, 165, 0, 0.15);
+            border: 1px solid var(--wait-color);
+            color: var(--wait-color);
+            font-size: 14px;
+            display: inline-block;
+            animation: waitGlow 1.5s infinite alternate;
+        }
+        
+        @keyframes waitGlow {
+            0% { box-shadow: 0 0 3px rgba(255, 165, 0, 0.3); }
+            100% { box-shadow: 0 0 8px rgba(255, 165, 0, 0.6); }
+        }
+        
+        .play-indicator {
+            margin-top: 10px;
+            padding: 5px 12px;
+            border-radius: 15px;
+            background: rgba(0, 200, 0, 0.15);
+            border: 1px solid #00c800;
+            color: #00c800;
+            font-size: 14px;
+            display: inline-block;
+            animation: playGlow 1.5s infinite alternate;
+        }
+        
+        @keyframes playGlow {
+            0% { box-shadow: 0 0 3px rgba(0, 200, 0, 0.3); }
+            100% { box-shadow: 0 0 8px rgba(0, 200, 0, 0.6); }
+        }
+        
+        .validation-indicator {
+            margin-top: 10px;
+            padding: 5px 12px;
+            border-radius: 15px;
+            background: rgba(255, 105, 180, 0.15);
+            border: 1px solid var(--validation-color);
+            color: var(--validation-color);
+            font-size: 14px;
+            display: inline-block;
+            animation: validationGlow 1.5s infinite alternate;
+        }
+        
+        @keyframes validationGlow {
+            0% { box-shadow: 0 0 3px rgba(255, 105, 180, 0.3); }
+            100% { box-shadow: 0 0 8px rgba(255, 105, 180, 0.6); }
+        }
+        
+        .state-check-indicator {
+            margin-top: 10px;
+            padding: 5px 12px;
+            border-radius: 15px;
+            background: rgba(0, 255, 255, 0.15);
+            border: 1px solid var(--state-check-color);
+            color: var(--state-check-color);
+            font-size: 14px;
+            display: inline-block;
+            animation: stateCheckGlow 1.5s infinite alternate;
+        }
+        
+        @keyframes stateCheckGlow {
+            0% { box-shadow: 0 0 3px rgba(0, 255, 255, 0.3); }
+            100% { box-shadow: 0 0 8px rgba(0, 255, 255, 0.6); }
+        }
+        
+        .progress-bar-container {
+            width: 80%;
+            max-width: 400px;
+            height: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            margin: 15px 0;
+            overflow: hidden;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #8a00e1, #ff69b4);
+            border-radius: 10px;
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+
+        /* Styles pour la licence */
+        .license-indicator {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 5px 10px;
+            border-radius: 5px;
+            color: white;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+        }
+
+        .license-lock {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 9999;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        .license-lock h1 {
+            font-size: 2em;
+            margin-bottom: 20px;
+            color: #8a00e1;
+        }
+
+        .license-lock button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: #8a00e1;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Indicateur de licence -->
+    <div id="licenseIndicator" class="license-indicator">
+        <span id="licenseStatus">Vérification de la licence...</span>
+    </div>
+
+    <!-- Écran de verrouillage licence -->
+    <div id="licenseLock" class="license-lock" style="display: none;">
+        <h1>Licence Requise</h1>
+        <p>Veuillez acheter une licence pour utiliser le prédicteur.</p>
+        <button id="goToStore">Acheter une licence</button>
+    </div>
+
+    <div class="stars" id="stars"></div>
+    
+    <div class="container">
+        <div class="luckyjet">
+            <span class="lucky">LUCKY</span><span class="jet">JET</span>
+        </div>
+        
+        <div class="circle-wrapper">
+            <div class="circle-outer">
+                <div class="circle-inner">
+                    <span id="multiplier">0.00X</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="time" id="time">Temps: 00:00</div>
+        
+        <div class="hacks-bots">
+            🚀 1WIN HACKS BOTS 🚀
+        </div>
+        
+        <div class="time" id="countdown">Prochaine prédiction: 00:00</div>
+        
+        <div class="flying-indicator" id="flyingIndicator" style="display: none;">
+            <i class="fas fa-plane"></i> État: Flying - En attente du crash
+        </div>
+        <div class="verification-indicator" id="verificationIndicator" style="display: none;">
+            <i class="fas fa-search"></i> Vérification en cours...
+        </div>
+        <div class="wait-indicator" id="waitIndicator" style="display: none;">
+            <i class="fas fa-hourglass-half"></i> WAIT FOR THE NEXT GAME
+        </div>
+        <div class="play-indicator" id="playIndicator" style="display: none;">
+            <i class="fas fa-play-circle"></i> PLAY - Prêt à miser!
+        </div>
+        <div class="validation-indicator" id="validationIndicator" style="display: none;">
+            <i class="fas fa-clock"></i> Validation en cours: 40s
+        </div>
+        <div class="state-check-indicator" id="stateCheckIndicator" style="display: none;">
+            <i class="fas fa-search"></i> Vérification de l'état du jeu...
+        </div>
+        
+        <div class="progress-bar-container" id="progressBarContainer" style="display: none;">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+        
+        <div class="status-indicator" id="statusIndicator">
+            <i class="fas fa-sync fa-spin"></i> Analyse en cours...
+        </div>
+    </div>
+
+    <!-- Script Firebase -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+        import { 
+            getAuth, 
+            onAuthStateChanged,
+            signOut
+        } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
+        import { 
+            getFirestore,
+            collection,
+            query,
+            getDocs,
+            where
+        } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+
+        // Configuration Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyDhySV3lXOlCQ8fMIYRlzs0YpMg6MZ_Ixo",
+            authDomain: "gamehub-e45ea.firebaseapp.com",
+            projectId: "gamehub-e45ea",
+            storageBucket: "gamehub-e45ea.firebasestorage.app",
+            messagingSenderId: "609288909968",
+            appId: "1:609288909968:web:45f3716ce6b2d4970d1415"
+        };
+
+        // Initialiser Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Variables globales pour la licence
+        window.userLicense = null;
+        window.isLicenseValid = false;
+        window.licenseCheckInterval = null;
+        window.userData = null;
+
+        // Vérifier l'état d'authentification et la licence
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                // Vérifier si l'email est vérifié
+                if (!user.emailVerified) {
+                    showLicenseMessage("Email non vérifié", "Veuillez vérifier votre email pour accéder au prédicteur", true);
+                    setTimeout(() => {
+                        window.location.href = 'login.html';
+                    }, 5000);
+                    return;
+                }
+                
+                console.log("Utilisateur connecté:", user.uid);
+                window.userData = user;
+                
+                // Vérifier la licence
+                await checkUserLicense(user.uid);
+                
+                // Démarrer la vérification périodique de la licence
+                startLicenseCheck();
+            } else {
+                // Rediriger vers la page de connexion si non connecté
+                showLicenseMessage("Non connecté", "Vous devez être connecté pour utiliser le prédicteur", true);
+                setTimeout(() => {
+                    window.location.href = 'login.html';
+                }, 3000);
+            }
+        });
+
+        // Vérifier la licence de l'utilisateur pour le jeu Lucky Jet
+        async function checkUserLicense(userId) {
+            console.log("Vérification de la licence pour l'utilisateur:", userId);
+            
+            try {
+                const userPurchasesRef = collection(db, 'users', userId, 'purchases');
+                
+                // Chercher toutes les licences pour 'luckyjet'
+                const q = query(
+                    userPurchasesRef,
+                    where('gameId', '==', 'luckyjet')
+                );
+                
+                console.log("Exécution de la requête Firestore...");
+                const querySnapshot = await getDocs(q);
+                console.log("Résultats trouvés:", querySnapshot.size);
+                
+                if (querySnapshot.empty) {
+                    console.log("Aucune licence trouvée pour 'luckyjet'");
+                    showLicenseMessage("Licence non trouvée", "Vous n'avez pas acheté le prédicteur Lucky Jet", true);
+                    window.isLicenseValid = false;
+                    disableBotFeatures();
+                    return;
+                }
+                
+                let activeLicense = null;
+                let latestLicense = null;
+                let now = new Date();
+                
+                // Parcourir tous les résultats
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    console.log("Document trouvé:", data);
+                    
+                    const expirationDate = new Date(data.expirationDate);
+                    const purchaseDate = new Date(data.purchaseDate);
+                    
+                    console.log("Statut:", data.status);
+                    console.log("Date d'expiration:", expirationDate);
+                    console.log("Date d'achat:", purchaseDate);
+                    
+                    // Vérifier si la licence est active ET non expirée
+                    if (data.status === 'active' && expirationDate > now) {
+                        if (!activeLicense || purchaseDate > new Date(activeLicense.purchaseDate)) {
+                            activeLicense = {
+                                id: doc.id,
+                                ...data,
+                                expirationDate: expirationDate,
+                                purchaseDate: purchaseDate,
+                                remainingTime: expirationDate - now
+                            };
+                        }
+                    }
+                    
+                    // Garder la licence la plus récente même si expirée
+                    if (!latestLicense || purchaseDate > new Date(latestLicense.purchaseDate)) {
+                        latestLicense = {
+                            id: doc.id,
+                            ...data,
+                            expirationDate: expirationDate,
+                            purchaseDate: purchaseDate
+                        };
+                    }
+                });
+                
+                if (activeLicense) {
+                    // Licence active trouvée
+                    window.userLicense = activeLicense;
+                    window.isLicenseValid = true;
+                    
+                    const remainingHours = Math.floor(window.userLicense.remainingTime / (1000 * 60 * 60));
+                    const remainingMinutes = Math.floor((window.userLicense.remainingTime % (1000 * 60 * 60)) / (1000 * 60));
+                    
+                    console.log("Licence active trouvée:", window.userLicense);
+                    console.log("Temps restant:", remainingHours + "h " + remainingMinutes + "m");
+                    
+                    showLicenseMessage(
+                        "Licence active ✓", 
+                        `Temps restant: ${remainingHours}h ${remainingMinutes}m`, 
+                        false
+                    );
+                    
+                    // Activer les fonctionnalités du bot
+                    enableBotFeatures();
+                    
+                    // Masquer le message après 3 secondes
+                    setTimeout(() => {
+                        hideLicenseMessage();
+                    }, 3000);
+                    
+                } else if (latestLicense) {
+                    // Afficher les détails de la licence trouvée
+                    console.log("Licence trouvée mais inactive ou expirée:", latestLicense);
+                    
+                    const now = new Date();
+                    const expirationDate = new Date(latestLicense.expirationDate);
+                    const isExpired = expirationDate < now;
+                    const isInactive = latestLicense.status !== 'active';
+                    
+                    let message = "Licence ";
+                    if (isInactive) message += "inactive";
+                    if (isExpired) message += isInactive ? " et expirée" : "expirée";
+                    
+                    showLicenseMessage(
+                        message,
+                        `Date d'expiration: ${expirationDate.toLocaleDateString()} ${expirationDate.toLocaleTimeString()}`,
+                        true
+                    );
+                    
+                    window.isLicenseValid = false;
+                    disableBotFeatures();
+                } else {
+                    console.log("Aucune licence valide trouvée");
+                    showLicenseMessage("Licence non valide", "Votre licence n'est pas active ou a expiré", true);
+                    window.isLicenseValid = false;
+                    disableBotFeatures();
+                }
+                
+            } catch (error) {
+                console.error('Erreur lors de la vérification de la licence:', error);
+                console.error('Détails de l\'erreur:', error.message);
+                
+                showLicenseMessage(
+                    "Erreur technique", 
+                    "Impossible de vérifier votre licence. Veuillez réessayer.", 
+                    true
+                );
+                window.isLicenseValid = false;
+                disableBotFeatures();
+            }
+        }
+
+        // Démarrer la vérification périodique de la licence
+        function startLicenseCheck() {
+            if (window.licenseCheckInterval) {
+                clearInterval(window.licenseCheckInterval);
+            }
+            
+            // Vérifier toutes les 30 secondes
+            window.licenseCheckInterval = setInterval(async () => {
+                const user = auth.currentUser;
+                if (user && window.isLicenseValid) {
+                    await checkUserLicense(user.uid);
+                }
+            }, 30000);
+        }
+
+        // Afficher un message de licence
+        function showLicenseMessage(title, message, isError = false) {
+            const existingMessage = document.getElementById('licenseMessage');
+            if (existingMessage) {
+                existingMessage.remove();
+            }
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.id = 'licenseMessage';
+            messageDiv.style.cssText = `
+                position: fixed;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: ${isError ? 'rgba(220, 53, 69, 0.95)' : 'rgba(40, 167, 69, 0.95)'};
+                color: white;
+                padding: 15px 30px;
+                border-radius: 8px;
+                z-index: 10000;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                animation: slideIn 0.3s ease;
+                text-align: center;
+                max-width: 90%;
+                backdrop-filter: blur(10px);
+                border: 1px solid ${isError ? 'rgba(220, 53, 69, 0.3)' : 'rgba(40, 167, 69, 0.3)'};
+            `;
+            
+            messageDiv.innerHTML = `
+                <strong style="font-size: 16px;">${title}</strong><br>
+                <span style="font-size: 14px;">${message}</span>
+            `;
+            
+            document.body.appendChild(messageDiv);
+        }
+
+        // Masquer le message de licence
+        function hideLicenseMessage() {
+            const messageDiv = document.getElementById('licenseMessage');
+            if (messageDiv) {
+                messageDiv.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => {
+                    if (messageDiv.parentNode) {
+                        messageDiv.parentNode.removeChild(messageDiv);
+                    }
+                }, 300);
+            }
+        }
+
+        // Désactiver les fonctionnalités du bot
+        function disableBotFeatures() {
+            console.log("Désactivation des fonctionnalités du bot");
+            
+            // Afficher l'écran de verrouillage
+            const licenseLock = document.getElementById('licenseLock');
+            if (licenseLock) {
+                licenseLock.style.display = 'flex';
+            }
+            
+            // Mettre à jour l'indicateur de licence
+            const licenseIndicator = document.getElementById('licenseIndicator');
+            if (licenseIndicator) {
+                licenseIndicator.innerHTML = `
+                    <span class="bg-red-500 rounded-full w-2 h-2 inline-block mr-1"></span>
+                    <span class="text-red-600 font-medium">Licence expirée</span>
+                `;
+            }
+            
+            // Désactiver les appels API
+            window.isLicenseValid = false;
+        }
+
+        // Activer les fonctionnalités du bot
+        function enableBotFeatures() {
+            console.log("Activation des fonctionnalités du bot");
+            
+            // Cacher l'écran de verrouillage
+            const licenseLock = document.getElementById('licenseLock');
+            if (licenseLock) {
+                licenseLock.style.display = 'none';
+            }
+            
+            // Mettre à jour l'indicateur de licence
+            const licenseIndicator = document.getElementById('licenseIndicator');
+            if (licenseIndicator && window.userLicense) {
+                const remainingHours = Math.floor(window.userLicense.remainingTime / (1000 * 60 * 60));
+                const remainingMinutes = Math.floor((window.userLicense.remainingTime % (1000 * 60 * 60)) / (1000 * 60));
+                
+                licenseIndicator.innerHTML = `
+                    <span class="bg-green-500 rounded-full w-2 h-2 inline-block mr-1"></span>
+                    <span class="text-white font-medium">Licence active: ${remainingHours}h ${remainingMinutes}m</span>
+                `;
+            }
+            
+            // Activer les appels API
+            window.isLicenseValid = true;
+        }
+
+        // Exposer les fonctions globalement
+        window.checkLicenseBeforeOperation = function() {
+            if (!window.isLicenseValid) {
+                showLicenseMessage("Licence expirée", "Votre licence a expiré. Veuillez en acheter une nouvelle.", true);
+                return false;
+            }
+            return true;
+        };
+
+        // Gérer le bouton d'achat de licence
+        document.getElementById('goToStore').addEventListener('click', () => {
+            window.location.href = 'accueil.html';
+        });
+    </script>
+
+    <script>
+        // NOUVELLE CONFIGURATION DE L'API avec session-id du deuxième fichier
+        const apiURL = "https://crash-gateway-grm-cr.100hp.app/state";
+        const headers = {
+            'customer-id': '077dee8d-c923-4c02-9bee-757573662e69',
+            'session-id': 'e73dcd35-b12b-4819-b90b-1eaff46b1af2', // Session ID du deuxième fichier
+            'accept': 'application/json',
+        };
+        
+        // Variables globales
+        let coefficientsHistory = [];
+        let isPredictionActive = false;
+        let predictionTimeout = null;
+        let currentPrediction = null;
+        let flyingCheckInterval = null;
+        let isFlyingState = false;
+        let flyingCheckCounter = 0;
+        let gameStateCheckInterval = null;
+        let gameStateCheckCount = 0;
+        let validationInterval = null;
+        let lastCoefficient = null;
+        let lastFetchTime = null;
+        const MAX_GAME_STATE_CHECKS = 20;
+        const VALIDATION_WINDOW = 40; // 40 secondes de fenêtre de validation
+        const STATE_CHECK_AT = 5; // Vérifier l'état à 5 secondes de la fin
+        
+        // Au chargement de la page
+        document.addEventListener('DOMContentLoaded', function() {
+            createStars();
+            updateCurrentTime();
+            
+            // Attendre que la vérification de licence soit terminée avant de commencer
+            const checkLicenseAndStart = () => {
+                if (window.isLicenseValid === undefined) {
+                    setTimeout(checkLicenseAndStart, 100);
+                    return;
+                }
+                
+                if (window.isLicenseValid) {
+                    fetchCoefficients();
+                    
+                    // Mettre à jour l'heure toutes les minutes
+                    setInterval(updateCurrentTime, 60000);
+                    
+                    // Récupérer les coefficients toutes les 5 secondes
+                    setInterval(fetchCoefficients, 5000);
+                }
+            };
+            
+            checkLicenseAndStart();
+        });
+        
+        // Créer les étoiles en arrière-plan
+        function createStars() {
+            const starsContainer = document.getElementById('stars');
+            const numberOfStars = 100;
+            
+            for (let i = 0; i < numberOfStars; i++) {
+                const star = document.createElement('div');
+                star.classList.add('star');
+                
+                // Position aléatoire
+                const x = Math.random() * 100;
+                const y = Math.random() * 100;
+                
+                // Taille aléatoire
+                const size = Math.random() * 3;
+                
+                // Durée et délai d'animation aléatoires
+                const duration = 2 + Math.random() * 4;
+                const opacity = 0.2 + Math.random() * 0.8;
+                
+                star.style.left = `${x}%`;
+                star.style.top = `${y}%`;
+                star.style.width = `${size}px`;
+                star.style.height = `${size}px`;
+                star.style.setProperty('--duration', `${duration}s`);
+                star.style.setProperty('--opacity', opacity);
+                
+                starsContainer.appendChild(star);
+            }
+        }
+        
+        // Mettre à jour l'heure actuelle
+        function updateCurrentTime() {
+            const now = new Date();
+            const hours = now.getHours().toString().padStart(2, '0');
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            document.getElementById('time').textContent = `Temps: ${hours}:${minutes}`;
+        }
+        
+        // Mettre à jour le compte à rebours
+        function updateCountdown(secondsLeft) {
+            const minutesLeft = Math.floor(secondsLeft / 60);
+            const secondsLeftFormatted = secondsLeft % 60;
+            const formattedMinutesLeft = minutesLeft.toString().padStart(2, '0');
+            const formattedSecondsLeft = secondsLeftFormatted.toString().padStart(2, '0');
+            document.getElementById('countdown').textContent = `Miser dans: ${formattedMinutesLeft}:${formattedSecondsLeft}`;
+            
+            // Effet visuel lorsque le temps diminue
+            if (secondsLeft <= 10 && secondsLeft > 0) {
+                document.getElementById('countdown').style.color = '#ff5555';
+                
+                // Démarrer la vérification de l'état Flying si nécessaire
+                if (secondsLeft <= 5 && !flyingCheckInterval) {
+                    startFlyingStateCheck();
+                }
+            } else {
+                document.getElementById('countdown').style.color = '';
+            }
+        }
+        
+        // Démarrer la vérification de l'état Flying
+        function startFlyingStateCheck() {
+            flyingCheckCounter = 0;
+            isFlyingState = false;
+            document.getElementById('flyingIndicator').style.display = 'inline-block';
+            
+            flyingCheckInterval = setInterval(async () => {
+                try {
+                    // Vérifier la licence avant chaque appel API
+                    if (!window.checkLicenseBeforeOperation()) {
+                        stopFlyingStateCheck();
+                        return;
+                    }
+                    
+                    const response = await fetch(apiURL, { headers });
+                    if (!response.ok) throw new Error("Erreur API");
+                    const data = await response.json();
+                    
+                    // Vérifier l'état Flying
+                    if (data.game && data.game.state === 'flying') {
+                        isFlyingState = true;
+                        document.getElementById('flyingIndicator').innerHTML = 
+                            `<i class="fas fa-plane"></i> État: Flying (${++flyingCheckCounter}/5)`;
+                    }
+                } catch (error) {
+                    console.error("Erreur lors de la vérification de l'état:", error);
+                }
+            }, 1000);
+        }
+        
+        // Arrêter la vérification de l'état Flying
+        function stopFlyingStateCheck() {
+            if (flyingCheckInterval) {
+                clearInterval(flyingCheckInterval);
+                flyingCheckInterval = null;
+                document.getElementById('flyingIndicator').style.display = 'none';
+            }
+        }
+        
+        // NOUVELLE MÉTHODE DE RÉCUPÉRATION DES COEFFICIENTS (du deuxième fichier)
+        async function fetchCoefficients() {
+            // Vérifier la licence avant de continuer
+            if (!window.checkLicenseBeforeOperation()) {
+                return;
+            }
+            
+            if (isPredictionActive) return;
+            
+            try {
+                const response = await fetch(apiURL, { headers });
+                if (!response.ok) throw new Error("Erreur API");
+
+                const data = await response.json();
+                const coefficient = data.stopCoefficients?.[0] ?? null;
+                
+                if (coefficient !== null) {
+                    // Ajustement du coefficient comme dans le deuxième fichier
+                    const adjustedCoefficient = coefficient === 1.00 ? 1.01 : coefficient;
+                    const roundedCoefficient = parseFloat(adjustedCoefficient.toFixed(2));
+                    const now = Date.now();
+                    
+                    // Vérifier si le coefficient est identique au précédent et dans un intervalle < 7s
+                    if (lastCoefficient === roundedCoefficient && lastFetchTime && (now - lastFetchTime) < 7000) {
+                        console.log("Coefficient identique détecté dans un intervalle trop court (ignoré)");
+                        return;
+                    }
+                    
+                    // Mettre à jour les variables de contrôle
+                    lastCoefficient = roundedCoefficient;
+                    lastFetchTime = now;
+                    
+                    // Mettre à jour l'historique des coefficients
+                    coefficientsHistory.unshift(roundedCoefficient);
+                    if (coefficientsHistory.length > 3) {
+                        coefficientsHistory.pop();
+                    }
+                    
+                    // Mettre à jour le statut
+                    document.getElementById('statusIndicator').innerHTML = 
+                        `<i class="fas fa-check-circle"></i> ${coefficientsHistory.length}/3 coefficients`;
+                    
+                    // Si nous avons 3 coefficients, lancer une prédiction
+                    if (coefficientsHistory.length === 3) {
+                        startPrediction();
+                    }
+                }
+            } catch (error) {
+                console.error("Erreur lors de la récupération des coefficients:", error);
+                document.getElementById('statusIndicator').innerHTML = 
+                    `<i class="fas fa-exclamation-triangle"></i> Erreur API, réessai...`;
+            }
+        }
+        
+        // Démarrer une nouvelle prédiction
+        function startPrediction() {
+            // Vérifier la licence avant de continuer
+            if (!window.checkLicenseBeforeOperation()) {
+                return;
+            }
+            
+            if (isPredictionActive) return;
+            
+            isPredictionActive = true;
+            isFlyingState = false;
+            flyingCheckCounter = 0;
+            gameStateCheckCount = 0;
+            
+            // Calculer la prédiction
+            const { predictedValue, estimatedDate } = calculatePrediction();
+            
+            // Vérifier si la prédiction est dans la plage acceptable (1.50 à 5.00)
+            if (predictedValue < 1.50 || predictedValue > 5.00) {
+                document.getElementById('statusIndicator').innerHTML = 
+                    `<i class="fas fa-exclamation-circle"></i> Prédiction hors plage (${predictedValue.toFixed(2)}X)`;
+                isPredictionActive = false;
+                return;
+            }
+            
+            // Stocker la prédiction en cours
+            currentPrediction = {
+                value: predictedValue,
+                targetTime: estimatedDate,
+                status: 'pending'
+            };
+            
+            // Afficher la prédiction
+            const multiplierElement = document.getElementById('multiplier');
+            multiplierElement.textContent = predictedValue.toFixed(2) + 'X';
+            
+            // Appliquer les styles en fonction de la valeur
+            const circleInner = document.querySelector('.circle-inner');
+            if (predictedValue > 8) {
+                circleInner.style.color = '#FFD700';
+                circleInner.style.textShadow = '0 0 15px rgba(255, 215, 0, 0.8)';
+            } else if (predictedValue > 6) {
+                circleInner.style.color = '#00FFFF';
+                circleInner.style.textShadow = '0 0 12px rgba(0, 255, 255, 0.7)';
+            } else if (predictedValue > 4) {
+                circleInner.style.color = '#FF69B4';
+                circleInner.style.textShadow = '0 0 12px rgba(255, 105, 180, 0.7)';
+            } else {
+                circleInner.style.color = '#00FF00';
+                circleInner.style.textShadow = '0 0 10px rgba(0, 255, 0, 0.7)';
+            }
+            
+            // Mettre à jour l'heure de la prédiction
+            const hours = estimatedDate.getHours();
+            const minutes = estimatedDate.getMinutes();
+            updateTime(hours, minutes);
+            
+            // Mettre à jour le statut
+            document.getElementById('statusIndicator').innerHTML = 
+                `<i class="fas fa-bolt"></i> Prédiction active: ${predictedValue.toFixed(2)}X`;
+            
+            // Démarrer le compte à rebours
+            startCountdownTimer(estimatedDate);
+        }
+        
+        // Calculer la prédiction
+        function calculatePrediction() {
+            const values = coefficientsHistory.slice(0, 3);
+            const average = values.reduce((a, b) => a + b, 0) / 3;
+            
+            // Régression exponentielle
+            const { a, b } = exponentialRegression(values);
+            const predictedValue = applyExponentialRegression(a, b, 4);
+            
+            // Calculer la date estimée
+            const now = new Date();
+            const estimatedTime = new Date(now.getTime() + predictedValue * 60000);
+            const isTomorrow = estimatedTime < now;
+            const estimatedDate = isTomorrow ? 
+                new Date(estimatedTime.getTime() + 24 * 60 * 60 * 1000) : estimatedTime;
+            
+            return { predictedValue, estimatedDate };
+        }
+        
+        // Régression exponentielle
+        function exponentialRegression(values) {
+            const n = values.length;
+            let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+            
+            for (let i = 0; i < n; i++) {
+                const x = Math.log(i + 1);
+                const y = Math.log(values[i]);
+                sumX += x;
+                sumY += y;
+                sumXY += x * y;
+                sumX2 += x * x;
+            }
+            
+            const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+            const intercept = (sumY - slope * sumX) / n;
+            
+            return { a: slope, b: intercept };
+        }
+        
+        // Appliquer la régression exponentielle
+        function applyExponentialRegression(a, b, x) {
+            return Math.exp(a * Math.log(x) + b);
+        }
+        
+        // Démarrer le compte à rebours
+        function startCountdownTimer(targetDate) {
+            // Calculer le temps restant en secondes
+            const updateCountdownDisplay = () => {
+                const now = new Date();
+                const diff = targetDate - now;
+                
+                if (diff <= 0) {
+                    // Le temps est écoulé, vérifier la prédiction
+                    stopFlyingStateCheck();
+                    checkPredictionResult();
+                    return;
+                }
+                
+                const secondsLeft = Math.floor(diff / 1000);
+                updateCountdown(secondsLeft);
+                
+                // Continuer à mettre à jour
+                predictionTimeout = setTimeout(updateCountdownDisplay, 1000);
+            };
+            
+            // Démarrer la mise à jour
+            updateCountdownDisplay();
+        }
+        
+        // Vérifier le résultat de la prédiction
+        async function checkPredictionResult() {
+            clearTimeout(predictionTimeout);
+            
+            const multiplierElement = document.getElementById('multiplier');
+            const circleInner = document.querySelector('.circle-inner');
+            
+            try {
+                // Vérifier la licence avant de continuer
+                if (!window.checkLicenseBeforeOperation()) {
+                    return;
+                }
+                
+                // Afficher l'indicateur de vérification
+                document.getElementById('verificationIndicator').style.display = 'inline-block';
+                
+                // Récupérer les données de l'API
+                const response = await fetch(apiURL, { headers });
+                if (!response.ok) throw new Error("Erreur API");
+                const data = await response.json();
+                
+                // Vérifier l'état du jeu
+                const gameState = data.game?.state;
+                
+                // Si le jeu est en cours (flying), attendre le prochain jeu
+                if (gameState === 'flying') {
+                    document.getElementById('verificationIndicator').style.display = 'none';
+                    document.getElementById('waitIndicator').style.display = 'inline-block';
+                    document.getElementById('statusIndicator').innerHTML = 
+                        `<i class="fas fa-clock"></i> WAIT FOR THE NEXT GAME`;
+                    
+                    // Patienter pour la fin du jeu en cours
+                    await waitForNextGame();
+                    
+                    // Démarrer la fenêtre de validation de 40 secondes
+                    await startValidationWindow();
+                    return;
+                }
+                
+                // Si le jeu n'est pas en cours, démarrer la fenêtre de validation
+                await startValidationWindow();
+                
+            } catch (error) {
+                console.error("Erreur lors de la vérification:", error);
+                document.getElementById('verificationIndicator').style.display = 'none';
+                document.getElementById('statusIndicator').innerHTML = 
+                    `<i class="fas fa-exclamation-triangle"></i> Erreur de vérification: ${error.message}`;
+                
+                // Réinitialiser après 3 secondes
+                setTimeout(() => {
+                    resetPrediction();
+                }, 3000);
+            }
+        }
+        
+        // Attendre le prochain jeu
+        async function waitForNextGame() {
+            return new Promise((resolve, reject) => {
+                gameStateCheckCount = 0;
+                gameStateCheckInterval = setInterval(async () => {
+                    try {
+                        // Vérifier la licence avant chaque appel API
+                        if (!window.checkLicenseBeforeOperation()) {
+                            clearInterval(gameStateCheckInterval);
+                            reject(new Error("Licence expirée"));
+                            return;
+                        }
+                        
+                        gameStateCheckCount++;
+                        
+                        // Si nous avons dépassé le nombre maximal de vérifications
+                        if (gameStateCheckCount > MAX_GAME_STATE_CHECKS) {
+                            clearInterval(gameStateCheckInterval);
+                            reject(new Error("Délai d'attente dépassé pour le prochain jeu"));
+                            return;
+                        }
+                        
+                        const response = await fetch(apiURL, { headers });
+                        const data = await response.json();
+                        
+                        // Vérifier l'état du jeu
+                        const gameState = data.game?.state;
+                        
+                        // Si le jeu est terminé (ended) et que le prochain a commencé
+                        if (gameState === 'idle' || gameState === 'flying') {
+                            // Afficher le message PLAY
+                            document.getElementById('waitIndicator').style.display = 'none';
+                            document.getElementById('playIndicator').style.display = 'inline-block';
+                            document.getElementById('statusIndicator').innerHTML = 
+                                `<i class="fas fa-play-circle"></i> PLAY - Prêt à miser!`;
+                            
+                            clearInterval(gameStateCheckInterval);
+                            resolve();
+                        }
+                    } catch (error) {
+                        clearInterval(gameStateCheckInterval);
+                        reject(error);
+                    }
+                }, 1000);
+            });
+        }
+        
+        // Démarrer la fenêtre de validation de 40 secondes
+        async function startValidationWindow() {
+            document.getElementById('verificationIndicator').style.display = 'none';
+            document.getElementById('playIndicator').style.display = 'none';
+            document.getElementById('validationIndicator').style.display = 'inline-block';
+            document.getElementById('progressBarContainer').style.display = 'block';
+            
+            const multiplierElement = document.getElementById('multiplier');
+            const circleInner = document.querySelector('.circle-inner');
+            const progressBar = document.getElementById('progressBar');
+            
+            // Afficher le statut de validation
+            document.getElementById('statusIndicator').innerHTML = 
+                `<i class="fas fa-search"></i> Validation en cours (${VALIDATION_WINDOW}s)...`;
+            
+            // Variables pour la fenêtre de validation
+            let validationTimeLeft = VALIDATION_WINDOW;
+            let validationSuccess = false;
+            let actualMultiplier = null;
+            let stateChecked = false;
+            let stateCheckScheduled = false;
+            
+            // Mettre à jour l'indicateur de validation
+            const updateValidationDisplay = () => {
+                document.getElementById('validationIndicator').innerHTML = 
+                    `<i class="fas fa-clock"></i> Validation en cours: ${validationTimeLeft}s`;
+                
+                // Mettre à jour la barre de progression
+                const progressPercentage = ((VALIDATION_WINDOW - validationTimeLeft) / VALIDATION_WINDOW) * 100;
+                progressBar.style.width = `${progressPercentage}%`;
+            };
+            
+            updateValidationDisplay();
+            
+            // Planifier la vérification de l'état à 5 secondes de la fin
+            const scheduleStateCheck = () => {
+                if (stateCheckScheduled) return;
+                stateCheckScheduled = true;
+                
+                setTimeout(async () => {
+                    if (validationTimeLeft <= STATE_CHECK_AT && !validationSuccess) {
+                        document.getElementById('stateCheckIndicator').style.display = 'inline-block';
+                        await checkGameStateAtEnd();
+                        document.getElementById('stateCheckIndicator').style.display = 'none';
+                    }
+                }, (VALIDATION_WINDOW - STATE_CHECK_AT) * 1000);
+            };
+            
+            scheduleStateCheck();
+            
+            // Démarrer la validation
+            validationInterval = setInterval(async () => {
+                try {
+                    // Vérifier la licence avant chaque appel API
+                    if (!window.checkLicenseBeforeOperation()) {
+                        clearInterval(validationInterval);
+                        return;
+                    }
+                    
+                    validationTimeLeft--;
+                    updateValidationDisplay();
+                    
+                    // Récupérer les données de l'API
+                    const response = await fetch(apiURL, { headers });
+                    const data = await response.json();
+                    
+                    // Récupérer le multiplicateur réel
+                    const currentMultiplier = getActualMultiplierFromData(data);
+                    
+                    // Vérifier si un coefficient valide a été trouvé
+                    if (currentMultiplier && currentMultiplier >= currentPrediction.value) {
+                        validationSuccess = true;
+                        actualMultiplier = currentMultiplier;
+                        clearInterval(validationInterval);
+                        finishValidation(validationSuccess, actualMultiplier);
+                        return;
+                    }
+                    
+                    // Si le temps est écoulé
+                    if (validationTimeLeft <= 0) {
+                        clearInterval(validationInterval);
+                        
+                        if (stateChecked) {
+                            finishValidation(validationSuccess, actualMultiplier);
+                        } else {
+                            document.getElementById('stateCheckIndicator').style.display = 'inline-block';
+                            await checkGameStateAtEnd();
+                            document.getElementById('stateCheckIndicator').style.display = 'none';
+                            finishValidation(validationSuccess, actualMultiplier);
+                        }
+                    }
+                } catch (error) {
+                    console.error("Erreur lors de la validation:", error);
+                }
+            }, 1000);
+        }
+        
+        // Vérifier l'état du jeu à 5 secondes de la fin
+        async function checkGameStateAtEnd() {
+            try {
+                // Vérifier la licence avant de continuer
+                if (!window.checkLicenseBeforeOperation()) {
+                    return;
+                }
+                
+                const response = await fetch(apiURL, { headers });
+                const data = await response.json();
+                const gameState = data.game?.state;
+                
+                // Si le jeu est en vol, attendre le résultat
+                if (gameState === 'flying') {
+                    document.getElementById('statusIndicator').innerHTML = 
+                        `<i class="fas fa-plane"></i> Jeu en cours, attente du résultat...`;
+                    
+                    // Attendre que le jeu se termine
+                    const crashPoint = await waitForGameResult();
+                    
+                    // Vérifier si le résultat est valide
+                    if (crashPoint !== null && crashPoint >= currentPrediction.value) {
+                        validationSuccess = true;
+                        actualMultiplier = crashPoint;
+                    }
+                }
+                
+                stateChecked = true;
+            } catch (error) {
+                console.error("Erreur lors de la vérification de l'état:", error);
+            }
+        }
+        
+        // Attendre le résultat du jeu en cours
+        async function waitForGameResult() {
+            return new Promise((resolve, reject) => {
+                const maxChecks = 40;
+                let checks = 0;
+                
+                const interval = setInterval(async () => {
+                    try {
+                        // Vérifier la licence avant chaque appel API
+                        if (!window.checkLicenseBeforeOperation()) {
+                            clearInterval(interval);
+                            resolve(null);
+                            return;
+                        }
+                        
+                        checks++;
+                        const response = await fetch(apiURL, { headers });
+                        const data = await response.json();
+                        
+                        // Vérifier si le jeu est terminé
+                        if (data.game?.state === 'ended') {
+                            clearInterval(interval);
+                            const crashPoint = getActualMultiplierFromData(data);
+                            resolve(crashPoint);
+                        } else if (checks >= maxChecks) {
+                            clearInterval(interval);
+                            resolve(null);
+                        }
+                    } catch (error) {
+                        clearInterval(interval);
+                        reject(error);
+                    }
+                }, 1000);
+            });
+        }
+        
+        // Terminer la validation et afficher le résultat
+        function finishValidation(success, actualMultiplier) {
+            const multiplierElement = document.getElementById('multiplier');
+            const circleInner = document.querySelector('.circle-inner');
+            
+            // Cacher les indicateurs
+            document.getElementById('validationIndicator').style.display = 'none';
+            document.getElementById('progressBarContainer').style.display = 'none';
+            
+            if (success) {
+                // Succès
+                multiplierElement.textContent = 'validé ✅';
+                circleInner.style.borderColor = '#00FF00';
+                circleInner.style.boxShadow = '0 0 20px rgba(0, 255, 0, 0.5)';
+                circleInner.style.color = '#00FF00';
+                document.getElementById('statusIndicator').innerHTML = 
+                    `<i class="fas fa-check-circle"></i> Prédiction validée: ${actualMultiplier.toFixed(2)}X`;
+            } else {
+                // Échec
+                multiplierElement.textContent = 'échoué ❌';
+                circleInner.style.borderColor = '#FF0000';
+                circleInner.style.boxShadow = '0 0 20px rgba(255, 0, 0, 0.5)';
+                circleInner.style.color = '#FF5555';
+                document.getElementById('statusIndicator').innerHTML = 
+                    `<i class="fas fa-times-circle"></i> Prédiction échouée`;
+            }
+            
+            // Animation
+            multiplierElement.classList.add('pulse');
+            
+            // Réinitialiser après 3 secondes
+            setTimeout(() => {
+                resetPrediction();
+            }, 3000);
+        }
+        
+        // Récupérer le multiplicateur réel à partir des données
+        function getActualMultiplierFromData(data) {
+            if (data && data.game && data.game.crash_point) {
+                return parseFloat(data.game.crash_point);
+            }
+            
+            if (data && data.crash_point) {
+                return parseFloat(data.crash_point);
+            }
+            
+            if (data && data.history && Array.isArray(data.history) && data.history.length > 0) {
+                return parseFloat(data.history[0]);
+            }
+            
+            if (data && data.game && data.game.history && Array.isArray(data.game.history) && data.game.history.length > 0) {
+                return parseFloat(data.game.history[0]);
+            }
+            
+            // NOUVELLE MÉTHODE: Utiliser stopCoefficients
+            if (data && data.stopCoefficients && Array.isArray(data.stopCoefficients) && data.stopCoefficients.length > 0) {
+                const coefficient = data.stopCoefficients[0];
+                const adjustedCoefficient = coefficient === 1.00 ? 1.01 : coefficient;
+                return parseFloat(adjustedCoefficient.toFixed(2));
+            }
+            
+            return null;
+        }
+        
+        // Réinitialiser la prédiction
+        function resetPrediction() {
+            const multiplierElement = document.getElementById('multiplier');
+            const circleInner = document.querySelector('.circle-inner');
+            const progressBar = document.getElementById('progressBar');
+            
+            // Réinitialiser l'affichage
+            multiplierElement.classList.remove('pulse');
+            circleInner.style.borderColor = '';
+            circleInner.style.boxShadow = '';
+            circleInner.style.color = '';
+            circleInner.style.textShadow = '';
+            multiplierElement.textContent = '0.00X';
+            progressBar.style.width = '0%';
+            
+            // Réinitialiser les variables
+            coefficientsHistory = [];
+            isPredictionActive = false;
+            currentPrediction = null;
+            isFlyingState = false;
+            flyingCheckCounter = 0;
+            stopFlyingStateCheck();
+            document.getElementById('verificationIndicator').style.display = 'none';
+            document.getElementById('waitIndicator').style.display = 'none';
+            document.getElementById('playIndicator').style.display = 'none';
+            document.getElementById('validationIndicator').style.display = 'none';
+            document.getElementById('stateCheckIndicator').style.display = 'none';
+            document.getElementById('progressBarContainer').style.display = 'none';
+            
+            // Arrêter les intervalles
+            if (gameStateCheckInterval) {
+                clearInterval(gameStateCheckInterval);
+                gameStateCheckInterval = null;
+            }
+            
+            if (validationInterval) {
+                clearInterval(validationInterval);
+                validationInterval = null;
+            }
+            
+            // Mettre à jour le statut
+            document.getElementById('statusIndicator').innerHTML = 
+                `<i class="fas fa-sync fa-spin"></i> Analyse en cours...`;
+            
+            // Réinitialiser le compte à rebours
+            document.getElementById('countdown').textContent = 'Prochaine prédiction: 00:00';
+            document.getElementById('countdown').style.color = '';
+        }
+        
+        // Mettre à jour l'affichage du temps de pari
+        function updateTime(hours, minutes) {
+            const formattedHours = hours.toString().padStart(2, '0');
+            const formattedMinutes = minutes.toString().padStart(2, '0');
+            document.getElementById('time').textContent = `Temps: ${formattedHours}:${formattedMinutes}`;
+        }
+    </script>
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+</body>
+</html>
