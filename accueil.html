@@ -2336,6 +2336,13 @@
     <!-- Système de notifications -->
     <div class="notification-system" id="notificationSystem"></div>
 
+    <!-- Bouton de débogage (optionnel) -->
+    <div style="position: fixed; bottom: 80px; right: 10px; z-index: 9999;">
+        <button onclick="verifierPaiementManuel()" style="background: #ff6b6b; color: white; border: none; padding: 5px 10px; border-radius: 5px; font-size: 10px;">
+            🔧 Debug Paiement
+        </button>
+    </div>
+
     <div class="app-container">
         <!-- Header -->
         <header class="app-header">
@@ -2906,6 +2913,8 @@
 
         // Animation au chargement de la page
         document.addEventListener('DOMContentLoaded', async function() {
+            console.log('🔄 Démarrage de l\'application...');
+            
             // Animation des sections
             const sections = document.querySelectorAll('.featured-cards, .referral-banner, .games-grid, .tutorial-section');
             sections.forEach((section, index) => {
@@ -2954,10 +2963,15 @@
                 window.location.href = 'profil.html';
             });
 
-            // Vérifier les paiements récents après un délai
+            // Vérifier les paiements récents IMMÉDIATEMENT
+            console.log('🔄 Démarrage vérification paiement récent...');
+            await verifierPaiementRecent();
+            
+            // Vérifier à nouveau après un délai pour être sûr
             setTimeout(async () => {
+                console.log('🔄 Vérification paiement (2ème passe)...');
                 await verifierPaiementRecent();
-            }, 1500);
+            }, 2000);
         });
 
         // Fonction pour créer des particules animées dans la bannière tutoriel
@@ -3449,6 +3463,13 @@
                         productCode: productCode
                     }));
                     
+                    console.log('✅ Paiement initié, stockage dans localStorage:', {
+                        reference: data.data.reference,
+                        gameId: gameId,
+                        gameName: gameName,
+                        localStorageKey: `pending_purchase_${data.data.reference}`
+                    });
+                    
                     // Rediriger vers Paystack
                     window.location.href = data.data.authorization_url;
                     
@@ -3468,34 +3489,60 @@
             }
         }
 
-        // Fonction pour vérifier un paiement récent
+        // Fonction pour vérifier un paiement récent - VERSION CORRIGÉE
         async function verifierPaiementRecent() {
+            // Récupérer les paramètres d'URL correctement
             const urlParams = new URLSearchParams(window.location.search);
             const reference = urlParams.get('reference');
-            const trxref = urlParams.get('trxref');
             
-            const paymentRef = reference || trxref;
+            console.log('🔍 Vérification paiement récent - URL params:', {
+                reference: reference,
+                fullUrl: window.location.href,
+                search: window.location.search
+            });
             
-            if (paymentRef && paymentRef !== 'true') {
-                console.log(`🔍 Vérification du paiement avec référence: ${paymentRef}`);
+            if (reference && reference !== 'undefined' && reference !== 'null') {
+                console.log(`🔍 Référence trouvée dans l'URL: ${reference}`);
                 
                 try {
                     // 1. Vérifier avec Paystack via votre backend sécurisé
-                    const response = await fetch(`${PAYSTACK_BACKEND_URL}/verify-payment/${paymentRef}`);
+                    console.log(`📡 Appel à ${PAYSTACK_BACKEND_URL}/verify-payment/${reference}`);
+                    const response = await fetch(`${PAYSTACK_BACKEND_URL}/verify-payment/${reference}`);
                     const result = await response.json();
+                    console.log('📊 Réponse vérification:', result);
                     
                     if (result.status === 'success') {
+                        console.log('✅ Paiement vérifié avec succès');
+                        
                         // 2. Récupérer les VRAIES données depuis localStorage
-                        const storedDataKey = `pending_purchase_${paymentRef}`;
+                        const storedDataKey = `pending_purchase_${reference}`;
                         const storedData = localStorage.getItem(storedDataKey);
+                        
+                        console.log('💾 Données stockées:', storedData);
                         
                         if (storedData) {
                             const purchaseData = JSON.parse(storedData);
                             
+                            // Vérifier si l'utilisateur est connecté
+                            const user = window.auth?.currentUser;
+                            if (!user) {
+                                console.error('❌ Utilisateur non connecté');
+                                showNotification(
+                                    'Connexion requise',
+                                    'Veuillez vous reconnecter pour finaliser l\'achat.',
+                                    'error',
+                                    5000
+                                );
+                                return;
+                            }
+                            
                             // Vérifier si l'achat n'a pas déjà été enregistré
                             const existingLicense = await window.checkGameLicense(purchaseData.gameId);
+                            console.log('📋 Vérification licence existante:', existingLicense);
                             
                             if (!existingLicense.hasLicense) {
+                                console.log('📝 Enregistrement nouvel achat...');
+                                
                                 // 3. Enregistrer dans VOTRE backend GameHub (Firebase)
                                 const registerResponse = await fetch(`${GAMEHUB_BACKEND_URL}/record-purchase`, {
                                     method: 'POST',
@@ -3504,87 +3551,112 @@
                                     },
                                     body: JSON.stringify({
                                         userId: purchaseData.userId,
-                                        userEmail: window.auth.currentUser?.email || '',
+                                        userEmail: user.email,
                                         gameId: purchaseData.gameId,
                                         gameName: purchaseData.gameName,
                                         plan: purchaseData.plan,
                                         price: purchaseData.price,
-                                        paystackReference: paymentRef
+                                        paystackReference: reference
                                     })
                                 });
                                 
                                 const registerResult = await registerResponse.json();
+                                console.log('📊 Résultat enregistrement:', registerResult);
                                 
                                 if (registerResult.status) {
                                     // SUCCÈS - Achat enregistré dans Firebase
+                                    console.log('🎉 Achat enregistré avec succès!');
+                                    
                                     showNotification(
                                         '🎉 Paiement réussi !',
                                         `Votre achat de ${purchaseData.gameName} a été confirmé.`,
                                         'success',
-                                        6000
+                                        8000
                                     );
                                     
                                     // Marquer le jeu comme acheté
                                     const gameCard = document.querySelector(`[data-game-id="${purchaseData.gameId}"]`);
                                     if (gameCard) {
-                                        const expirationDate = new Date();
-                                        switch(purchaseData.plan) {
-                                            case 'trial':
-                                                expirationDate.setHours(expirationDate.getHours() + 1);
-                                                break;
-                                            case 'daily':
-                                                expirationDate.setDate(expirationDate.getDate() + 1);
-                                                break;
-                                            case 'weekly':
-                                                expirationDate.setDate(expirationDate.getDate() + 7);
-                                                break;
-                                            case 'monthly':
-                                                expirationDate.setMonth(expirationDate.getMonth() + 1);
-                                                break;
-                                        }
+                                        const expirationDate = new Date(registerResult.expirationDate || new Date());
                                         window.markGameAsPurchased(gameCard, expirationDate);
+                                        console.log(`🔄 Jeu ${purchaseData.gameId} marqué comme acheté`);
                                     }
+                                    
+                                    // Nettoyer localStorage
+                                    localStorage.removeItem(storedDataKey);
+                                    console.log('🧹 localStorage nettoyé');
+                                } else {
+                                    console.error('❌ Échec enregistrement achat:', registerResult);
+                                    showNotification(
+                                        'Erreur d\'enregistrement',
+                                        'L\'achat a été confirmé mais n\'a pas pu être enregistré. Contactez le support.',
+                                        'warning',
+                                        6000
+                                    );
                                 }
                             } else {
+                                console.log('ℹ️ Achat déjà enregistré');
                                 showNotification(
-                                    'Achat déjà enregistré',
-                                    'Cet achat a déjà été traité et enregistré.',
+                                    'Achat déjà traité',
+                                    'Cet achat a déjà été enregistré dans votre compte.',
                                     'info',
                                     4000
                                 );
+                                localStorage.removeItem(storedDataKey);
                             }
                             
-                            // 4. Nettoyer localStorage
-                            localStorage.removeItem(storedDataKey);
-                        }
-                        
-                        // 5. Nettoyer l'URL
-                        window.history.replaceState({}, document.title, window.location.pathname);
-                        
-                        // 6. Recharger les achats pour mettre à jour l'interface
-                        if (window.checkAllPurchasedGames) {
-                            await window.checkAllPurchasedGames();
+                            // Nettoyer l'URL
+                            const newUrl = window.location.pathname;
+                            window.history.replaceState({}, document.title, newUrl);
+                            console.log('🔗 URL nettoyée:', newUrl);
+                            
+                        } else {
+                            console.error('❌ Données manquantes dans localStorage pour:', storedDataKey);
+                            showNotification(
+                                'Données manquantes',
+                                'Les données d\'achat sont introuvables. Contactez le support avec votre référence.',
+                                'error',
+                                6000
+                            );
                         }
                         
                     } else {
+                        console.error('❌ Paiement non vérifié:', result.message);
                         showNotification(
                             'Paiement non confirmé',
-                            'Le paiement n\'a pas pu être vérifié. Si vous avez été débité, contactez le support.',
+                            result.message || 'Le paiement n\'a pas pu être vérifié.',
                             'warning',
                             5000
                         );
                     }
                 } catch (error) {
-                    console.error('Erreur vérification paiement:', error);
+                    console.error('❌ Erreur vérification paiement:', error);
                     showNotification(
                         'Erreur de vérification',
                         'Impossible de vérifier le statut du paiement. Veuillez réessayer.',
                         'error',
-                        4000
+                        5000
                     );
                 }
+            } else {
+                console.log('ℹ️ Aucune référence de paiement dans l\'URL');
             }
         }
+
+        // Fonction utilitaire pour tester manuellement la vérification
+        window.verifierPaiementManuel = function() {
+            console.log('🔧 Vérification manuelle du paiement');
+            const urlParams = new URLSearchParams(window.location.search);
+            const reference = urlParams.get('reference');
+            
+            if (reference) {
+                console.log('🔍 Référence trouvée:', reference);
+                verifierPaiementRecent();
+            } else {
+                console.log('❌ Aucune référence dans l\'URL');
+                showNotification('Debug', 'Aucune référence de paiement dans l\'URL', 'info', 3000);
+            }
+        };
 
         // Fermer la modale en cliquant à l'extérieur
         document.getElementById('subscriptionModal').addEventListener('click', function(e) {
