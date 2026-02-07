@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>👨‍🚀 Predicteur Pro - Astronaute</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="astronaute-predictor.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body class="bg-gradient-to-br from-red-950 to-red-900 text-white">
+
+<!-- En-tête utilisateur et licence -->
+<div class="container mx-auto px-2 py-4">
+    <div class="user-header">
+        <div id="userInfo" class="flex items-center">
+            <div class="animate-pulse">
+                <div class="w-8 h-8 rounded-full bg-gradient-to-r from-red-700 to-red-500 mr-2 border border-red-300"></div>
+            </div>
+            <div>
+                <p class="text-sm font-medium text-white">Vérification en cours...</p>
+                <p class="text-xs text-red-200">Prédicteur Astronaute Pro</p>
+            </div>
+        </div>
+        
+        <div class="flex items-center space-x-3">
+            <div id="licenseIndicator" class="license-indicator">
+                <span class="bg-red-500 rounded-full w-2 h-2 inline-block mr-1 animate-pulse"></span>
+                <span class="text-white">Vérification licence...</span>
+            </div>
+            
+            <button onclick="logoutUser()" class="logout-btn">
+                <i class="fas fa-sign-out-alt mr-2"></i>
+                Déconnexion
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Interface principale -->
+<div class="container mx-auto px-2 py-4" id="mainApp">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
+        <!-- Colonne principale -->
+        <div class="lg:col-span-2">
+            <!-- Section Récupération Automatique -->
+            <div class="dashboard-card">
+                <div class="auto-fetch-container">
+                    <div class="auto-fetch-header flex justify-between items-center">
+                        <div class="auto-fetch-title font-bold text-red-200 text-sm">
+                            <i class="fas fa-user-astronaut mr-2 space-animation"></i> Récupération Automatique
+                        </div>
+                        <div class="auto-fetch-status text-red-100 text-sm" id="autoFetchStatus">
+                            <span class="auto-fetch-dot bg-red-500 rounded-full w-2 h-2 inline-block mr-1"></span>
+                            <span>En attente de licence</span>
+                        </div>
+                    </div>
+                    
+                    <div class="coefficients-display mt-3 bg-red-900 rounded-lg p-3" id="coefficientsDisplay">
+                        <p class="text-center text-red-300 text-sm">Vérifiez votre licence pour activer le prédicteur</p>
+                    </div>
+                    
+                    <div class="flex gap-3 mt-3 flex-wrap">
+                        <button onclick="startAutoFetch()" class="flex-1 gradient-btn min-w-[120px]" disabled>
+                            <i class="fas fa-play mr-2"></i> Démarrer
+                        </button>
+                        <button onclick="stopAutoFetch()" class="flex-1 bg-gradient-to-r from-red-800 to-red-900 text-white py-2 rounded-lg hover:opacity-90 transition font-semibold text-sm min-w-[120px]" disabled>
+                            <i class="fas fa-stop mr-2"></i> Arrêter
+                        </button>
+                        <button onclick="openAdvancedSettings()" class="flex-1 bg-gradient-to-r from-red-700 to-red-800 text-white py-2 rounded-lg hover:opacity-90 transition font-semibold text-sm min-w-[120px]" disabled>
+                            <i class="fas fa-cog mr-2"></i> Options
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="result" class="bg-red-900 rounded-lg p-4 mt-4 border border-red-800">
+                    <div class="text-center p-4">
+                        <i class="fas fa-user-astronaut text-3xl text-red-400 mb-3 space-animation"></i>
+                        <p class="text-red-200">Le prédicteur est verrouillé</p>
+                        <p class="text-sm text-red-300 mt-1">Activez votre licence pour débloquer toutes les fonctionnalités</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Colonne de droite -->
+        <div>
+            <div class="stats-card mb-4">
+                <h3 class="text-lg font-bold text-red-200 mb-3">
+                    <i class="fas fa-chart-pie text-red-300 mr-2"></i>
+                    Statistiques Globales
+                </h3>
+                <div id="statsContainer" class="text-center">
+                    <p id="totalPredictions" class="text-2xl font-bold text-red-300">0</p>
+                    <p id="predictionAccuracy" class="text-xl font-bold text-green-300 mt-1">0%</p>
+                    <div class="grid grid-cols-3 gap-3 mt-3">
+                        <div class="stats-box">
+                            <p class="text-lg font-bold text-green-400">✅</p>
+                            <p class="text-xs text-red-200">Validées</p>
+                            <p id="successCount" class="font-bold text-white">0</p>
+                        </div>
+                        <div class="stats-box">
+                            <p class="text-lg font-bold text-red-400">❌</p>
+                            <p class="text-xs text-red-200">Échouées</p>
+                            <p id="failedCount" class="font-bold text-white">0</p>
+                        </div>
+                        <div class="stats-box">
+                            <p class="text-lg font-bold text-red-300">⏳</p>
+                            <p class="text-xs text-red-200">En attente</p>
+                            <p id="pendingCount" class="font-bold text-white">0</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="stats-card mb-4">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-lg font-bold text-red-200">
+                        <i class="fas fa-brain text-red-300 mr-2"></i>
+                        Analyse Intelligence
+                    </h3>
+                    <button onclick="analyzeHistoricalData()" class="bg-gradient-to-r from-red-700 to-red-800 text-white px-2 py-1 rounded-lg text-xs hover:opacity-90 transition" disabled>
+                        Actualiser
+                    </button>
+                </div>
+                <div id="intelligentAnalysis" class="text-xs space-y-2">
+                    <div class="text-center text-red-300 p-3">
+                        <i class="fas fa-lock text-2xl text-red-400 mb-2"></i>
+                        <p>Activez votre licence pour débloquer l'analyse</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="dashboard-card">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-lg font-bold text-red-200">
+                        <i class="fas fa-history text-red-300 mr-2"></i>
+                        Historique des Prédictions
+                    </h3>
+                    <div class="flex gap-2">
+                        <button id="toggleHistory" class="bg-gradient-to-r from-red-700 to-red-800 text-white px-2 py-1 rounded-lg text-xs hover:opacity-90 transition" onclick="toggleHistoryVisibility()">
+                            Masquer
+                        </button>
+                        <button id="deleteHistory" class="bg-gradient-to-r from-red-800 to-red-900 text-white px-2 py-1 rounded-lg text-xs hover:opacity-90 transition" onclick="deleteHistory()">
+                            <i class="fas fa-trash-alt mr-1"></i>Supprimer
+                        </button>
+                    </div>
+                </div>
+                <div id="predictionHistory" class="space-y-3 max-h-[400px] overflow-y-auto pr-1 text-sm">
+                    <div class="text-center text-red-300 p-4">
+                        <i class="fas fa-chart-line text-2xl text-red-400 mb-2"></i>
+                        <p>Aucune donnée disponible</p>
+                        <p class="text-xs mt-1">L'historique s'affichera ici après vos premières prédictions</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="module" src="astronaute-predictor-firebase.js"></script>
+<script src="astronaute-predictor.js"></script>
+</body>
+</html>

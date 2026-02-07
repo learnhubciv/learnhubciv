@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 Betclic Prédicteur Pro - Version Premium</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="betclic-predictor.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <!-- Script Firebase -->
+    <script type="module" src="betclic-predictor-firebase.js"></script>
+</head>
+<body class="bg-gray-50">
+
+<!-- En-tête utilisateur et licence -->
+<div class="container mx-auto px-2 py-4">
+    <div class="user-header">
+        <div id="userInfo" class="flex items-center">
+            <div class="animate-pulse">
+                <div class="w-8 h-8 rounded-full bg-red-300 mr-2 border border-gray-300"></div>
+            </div>
+            <div>
+                <p class="text-sm font-medium text-white">Vérification en cours...</p>
+                <p class="text-xs text-red-100">Prédicteur Betclic Pro</p>
+            </div>
+        </div>
+        
+        <div class="flex items-center space-x-3">
+            <div id="licenseIndicator" class="license-indicator">
+                <span class="bg-yellow-500 rounded-full w-2 h-2 inline-block mr-1 animate-pulse"></span>
+                <span class="text-white">Vérification licence...</span>
+            </div>
+            
+            <button onclick="logoutUser()" class="logout-btn">
+                <i class="fas fa-sign-out-alt mr-2"></i>
+                Déconnexion
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Interface principale -->
+<div class="container mx-auto px-2 py-4" id="mainApp">
+    <div class="robot-header text-center glowing">
+        <h1 class="text-3xl font-bold flex items-center justify-center flex-wrap">
+            <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTg0Hbd3MXuBVw0c21toAkuRGhOXwjrAyxgeB0Pp_R7RNB086pLdA7x8DI&s=10" alt="Betclic" class="h-10 mr-3 rounded-lg">
+            <span>🤖 Prédicteur Betclic Pro</span>
+            <span class="ml-2 bg-white text-red-700 text-xs px-2 py-1 rounded-full font-bold">V2.0</span>
+        </h1>
+        <p class="mt-1 text-red-100 text-sm">Analyse avancée des côtes avec validation automatique sur 3 rounds</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
+        <!-- Colonne principale -->
+        <div class="lg:col-span-2">
+            <!-- Section Analyse Manuelle -->
+            <div class="dashboard-card">
+                <h3 class="text-lg font-bold text-gray-800 mb-3">
+                    <i class="fas fa-chart-line text-red-600 mr-2"></i>
+                    Analyse des Côtes Betclic
+                </h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div class="advanced-input">
+                        <label class="block text-gray-700 mb-2 font-semibold text-sm">
+                            <i class="fas fa-list-ol mr-1"></i>
+                            Côtes (min. 5, séparées par des virgules)
+                        </label>
+                        <input 
+                            type="text" 
+                            id="manualOddsInput" 
+                            placeholder="Ex: 1.50, 1.75, 2.00, 1.90, 1.65" 
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition text-sm"
+                            disabled
+                        >
+                        <div class="tooltip">Entrez au moins 5 côtes séparées par des virgules (pour 1.00, entrez 1.01)</div>
+                    </div>
+                    <div class="advanced-input">
+                        <label class="block text-gray-700 mb-2 font-semibold text-sm">
+                            <i class="fas fa-coins mr-1"></i>
+                            Mise (optionnelle)
+                        </label>
+                        <input 
+                            type="number" 
+                            id="manualBetAmount" 
+                            placeholder="Montant à miser" 
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition text-sm"
+                            min="0"
+                            step="0.01"
+                            disabled
+                        >
+                        <div class="tooltip">Entrez votre mise pour calculer les gains potentiels</div>
+                    </div>
+                </div>
+                
+                <div class="flex gap-3 flex-wrap">
+                    <button 
+                        onclick="predictManualOdds()" 
+                        class="flex-1 gradient-btn min-w-[150px]"
+                        disabled
+                    >
+                        <i class="fas fa-calculator mr-2"></i>
+                        Analyser les Côtes
+                    </button>
+                    <button 
+                        onclick="openAdvancedSettings()" 
+                        class="flex-1 bg-gradient-to-r from-red-600 to-red-800 text-white py-2 rounded-lg hover:opacity-90 transition font-semibold text-sm min-w-[150px]"
+                        disabled
+                    >
+                        <i class="fas fa-cog mr-2"></i>
+                        Options Avancées
+                    </button>
+                </div>
+                
+                <div class="mt-4 p-3 bg-red-50 rounded-lg border border-red-200">
+                    <p class="text-sm text-red-800 font-medium">
+                        <i class="fas fa-lightbulb mr-2"></i>
+                        Conseil : Pour une précision optimale, entrez les 5 dernières côtes du jeu
+                    </p>
+                </div>
+                
+                <div id="result" class="bg-gray-50 rounded-lg p-4 mt-4 border border-gray-200">
+                    <div class="text-center p-4">
+                        <i class="fas fa-key text-3xl text-red-400 mb-3"></i>
+                        <p class="text-gray-600">Le prédicteur est verrouillé</p>
+                        <p class="text-sm text-gray-500 mt-1">Activez votre licence pour débloquer toutes les fonctionnalités</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Colonne de droite -->
+        <div>
+            <div class="stats-card mb-4">
+                <h3 class="text-lg font-bold text-gray-800 mb-3">
+                    <i class="fas fa-chart-pie text-red-600 mr-2"></i>
+                    Statistiques Globales
+                </h3>
+                <div id="statsContainer" class="text-center">
+                    <p id="totalPredictions" class="text-2xl font-bold text-red-600">0</p>
+                    <p id="predictionAccuracy" class="text-xl font-bold text-red-600 mt-1">0%</p>
+                    <div class="grid grid-cols-3 gap-3 mt-3">
+                        <div class="bg-green-100 p-2 rounded-lg">
+                            <p class="text-lg font-bold text-green-800">✅</p>
+                            <p class="text-xs text-gray-700">Validées</p>
+                            <p id="successCount" class="font-bold">0</p>
+                        </div>
+                        <div class="bg-red-100 p-2 rounded-lg">
+                            <p class="text-lg font-bold text-red-800">❌</p>
+                            <p class="text-xs text-gray-700">Échouées</p>
+                            <p id="failedCount" class="font-bold">0</p>
+                        </div>
+                        <div class="bg-yellow-100 p-2 rounded-lg">
+                            <p class="text-lg font-bold text-yellow-800">⏳</p>
+                            <p class="text-xs text-gray-700">En attente</p>
+                            <p id="pendingCount" class="font-bold">0</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="stats-card mb-4">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-lg font-bold text-gray-800">
+                        <i class="fas fa-brain text-red-600 mr-2"></i>
+                        Analyse Intelligence
+                    </h3>
+                    <button onclick="analyzeHistoricalData()" class="bg-gradient-to-r from-red-600 to-red-800 text-white px-2 py-1 rounded-lg text-xs hover:opacity-90 transition" disabled>
+                        Actualiser
+                    </button>
+                </div>
+                <div id="intelligentAnalysis" class="text-xs space-y-2">
+                    <div class="text-center text-gray-500 p-3">
+                        <i class="fas fa-lock text-2xl text-gray-400 mb-2"></i>
+                        <p>Activez votre licence pour débloquer l'analyse</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="dashboard-card">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-lg font-bold text-gray-800">
+                        <i class="fas fa-history text-red-600 mr-2"></i>
+                        Historique des Prédictions
+                    </h3>
+                    <div class="flex gap-2">
+                        <button id="toggleHistory" class="bg-gradient-to-r from-red-600 to-red-800 text-white px-2 py-1 rounded-lg text-xs hover:opacity-90 transition" onclick="toggleHistoryVisibility()">
+                            Masquer
+                        </button>
+                        <button id="deleteHistory" class="bg-gradient-to-r from-red-500 to-red-600 text-white px-2 py-1 rounded-lg text-xs hover:opacity-90 transition" onclick="deleteHistory()">
+                            <i class="fas fa-trash-alt mr-1"></i>Supprimer
+                        </button>
+                    </div>
+                </div>
+                <div id="predictionHistory" class="space-y-3 max-h-[400px] overflow-y-auto pr-1 text-sm">
+                    <div class="text-center text-gray-500 p-4">
+                        <i class="fas fa-chart-line text-2xl text-gray-400 mb-2"></i>
+                        <p>Aucune donnée disponible</p>
+                        <p class="text-xs mt-1">L'historique s'affichera ici après vos premières prédictions</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Section Fonctionnalités -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+        <div class="feature-card">
+            <div class="text-red-600 text-2xl mb-2">
+                <i class="fas fa-shield-alt"></i>
+            </div>
+            <h4 class="font-bold text-base text-gray-800 mb-1">Marge de Sécurité</h4>
+            <p class="text-gray-600 text-sm">Application automatique de marge selon les règles pour maximiser vos gains.</p>
+        </div>
+        
+        <div class="feature-card">
+            <div class="text-red-600 text-2xl mb-2">
+                <i class="fas fa-robot"></i>
+            </div>
+            <h4 class="font-bold text-base text-gray-800 mb-1">IA Avancée</h4>
+            <p class="text-gray-600 text-sm">Algorithmes intelligents optimisés pour les jeux Betclic avec haute précision.</p>
+        </div>
+        
+        <div class="feature-card">
+            <div class="text-red-600 text-2xl mb-2">
+                <i class="fas fa-chart-line"></i>
+            </div>
+            <h4 class="font-bold text-base text-gray-800 mb-1">Validation Automatique</h4>
+            <p class="text-gray-600 text-sm">Vérification automatique des prédictions sur les 3 rounds suivants.</p>
+        </div>
+    </div>
+</div>
+
+<script src="betclic-predictor.js"></script>
+</body>
+</html>
