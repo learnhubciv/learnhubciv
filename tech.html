@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API & Documentation - GameHub</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #8A2BE2;
+            --primary-dark: #6A1BB2;
+            --secondary: #FF6B6B;
+            --accent: #00D4FF;
+            --dark: #1A1A2E;
+            --light: #F8F9FA;
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --text: #333333;
+            --text-light: #6C757D;
+            --success: #28A745;
+            --warning: #FFC107;
+            --shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            --radius: 12px;
+            --transition: all 0.3s ease;
+            --code-bg: #1E1E1E;
+            --code-text: #D4D4D4;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #1A1A2E 0%, #16213E 50%, #0F3460 100%);
+            color: var(--light);
+            min-height: 100vh;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .app-container {
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 0 0 80px;
+        }
+
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 15px 10px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(26, 26, 46, 0.9);
+            backdrop-filter: blur(10px);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .logo-text {
+            font-size: 1.3rem;
+            font-weight: 700;
+            background: linear-gradient(to right, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .page-title {
+            text-align: center;
+            margin: 20px 0;
+            font-size: 1.8rem;
+            background: linear-gradient(to right, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .page-subtitle {
+            text-align: center;
+            margin: 0 20px 30px;
+            color: var(--text-light);
+            font-size: 1rem;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .api-section {
+            margin: 0 15px 30px;
+        }
+
+        .section-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin: 0 0 15px;
+            display: flex;
+            align-items: center;
+            padding-left: 10px;
+            border-left: 4px solid var(--accent);
+        }
+
+        .api-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+        }
+
+        .api-card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+        }
+
+        .api-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .api-header {
+            padding: 15px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .api-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .api-name {
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+
+        .api-content {
+            padding: 15px;
+        }
+
+        .api-image {
+            width: 100%;
+            height: 120px;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+
+        .api-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .api-info {
+            margin-bottom: 15px;
+        }
+
+        .api-info-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+
+        .api-info-label {
+            color: var(--text-light);
+            font-weight: 500;
+        }
+
+        .api-info-value {
+            color: var(--text);
+            font-weight: 600;
+            background: rgba(138, 43, 226, 0.1);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.85rem;
+        }
+
+        .api-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 10px 15px;
+            border: none;
+            border-radius: var(--radius);
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, var(--primary-dark), #5a189a);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(138, 43, 226, 0.3);
+        }
+
+        .btn-secondary {
+            background: rgba(0, 0, 0, 0.05);
+            color: var(--text);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        .documentation-section {
+            margin: 0 15px 30px;
+        }
+
+        .doc-card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 20px;
+            box-shadow: var(--shadow);
+            margin-bottom: 20px;
+        }
+
+        .doc-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .doc-content {
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        .doc-content p {
+            margin-bottom: 15px;
+        }
+
+        .doc-content ul, .doc-content ol {
+            margin-bottom: 15px;
+            padding-left: 20px;
+        }
+
+        .doc-content li {
+            margin-bottom: 8px;
+        }
+
+        .code-block {
+            background: var(--code-bg);
+            color: var(--code-text);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .code-comment {
+            color: #6A9955;
+        }
+
+        .code-keyword {
+            color: #569CD6;
+        }
+
+        .code-function {
+            color: #DCDCAA;
+        }
+
+        .code-string {
+            color: #CE9178;
+        }
+
+        .code-variable {
+            color: #9CDCFE;
+        }
+
+        .code-number {
+            color: #B5CEA8;
+        }
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(26, 26, 46, 0.95);
+            backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: space-around;
+            padding: 12px 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 100;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: var(--text-light);
+            font-size: 11px;
+            transition: var(--transition);
+            cursor: pointer;
+        }
+
+        .nav-item.active {
+            color: var(--accent);
+        }
+
+        .nav-icon {
+            font-size: 18px;
+        }
+
+        .notification-system {
+            position: fixed;
+            top: 80px;
+            right: 15px;
+            z-index: 2000;
+            max-width: 320px;
+        }
+
+        .notification {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 15px;
+            margin-bottom: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            border-left: 4px solid var(--primary);
+            transform: translateX(400px);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        .notification.hide {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+
+        .notification.success {
+            border-left-color: var(--success);
+        }
+
+        .notification.info {
+            border-left-color: var(--accent);
+        }
+
+        .notification-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .notification.info .notification-icon {
+            background: rgba(0, 212, 255, 0.15);
+            color: var(--accent);
+        }
+
+        .notification.success .notification-icon {
+            background: rgba(40, 167, 69, 0.15);
+            color: var(--success);
+        }
+
+        .notification-content {
+            flex: 1;
+        }
+
+        .notification-title {
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 4px;
+            font-size: 14px;
+        }
+
+        .notification-message {
+            color: var(--text-light);
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        .notification-close {
+            background: none;
+            border: none;
+            color: var(--text-light);
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: var(--transition);
+            flex-shrink: 0;
+        }
+
+        .notification-close:hover {
+            background: rgba(0, 0, 0, 0.05);
+            color: var(--text);
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+            opacity: 0;
+            visibility: hidden;
+            transition: var(--transition);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .api-modal {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            width: 100%;
+            max-width: 500px;
+            max-height: 85vh;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            transform: translateY(30px);
+            transition: var(--transition);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-overlay.active .api-modal {
+            transform: translateY(0);
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            padding: 15px 20px;
+            text-align: center;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(255, 255, 255, 0.2);
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .modal-close:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: rotate(90deg);
+        }
+
+        .modal-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .modal-subtitle {
+            font-size: 0.85rem;
+            opacity: 0.9;
+        }
+
+        .modal-content {
+            padding: 20px;
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+
+        .modal-actions {
+            padding: 15px 20px;
+            display: flex;
+            gap: 10px;
+            flex-shrink: 0;
+            border-top: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        @media (min-width: 768px) {
+            .app-container {
+                max-width: 750px;
+            }
+            
+            .api-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .app-container {
+                max-width: 1000px;
+            }
+            
+            .api-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Système de notifications -->
+    <div class="notification-system" id="notificationSystem"></div>
+
+    <div class="app-container">
+        <header class="app-header">
+            <div class="logo">
+                <div class="logo-icon">
+                    <i class="fas fa-code"></i>
+                </div>
+                <div class="logo-text">GameHub</div>
+            </div>
+        </header>
+
+        <h1 class="page-title">API & Documentation Technique</h1>
+        <p class="page-subtitle">Intégrez nos API de prédiction dans vos applications et systèmes pour des analyses avancées en temps réel.</p>
+
+        <section class="api-section">
+            <h2 class="section-title">API Disponibles</h2>
+            <div class="api-grid" id="apiGrid">
+                <!-- Les cartes API seront générées dynamiquement -->
+            </div>
+        </section>
+
+        <section class="documentation-section">
+            <h2 class="section-title">Documentation</h2>
+            
+            <div class="doc-card">
+                <h3 class="doc-title"><i class="fas fa-book"></i> Introduction</h3>
+                <div class="doc-content">
+                    <p>Nos API de prédiction vous permettent d'accéder aux données en temps réel des jeux pour intégrer des fonctionnalités de prédiction dans vos applications.</p>
+                    <p>Toutes nos API utilisent le même endpoint avec des headers spécifiques pour chaque jeu.</p>
+                </div>
+            </div>
+            
+            <div class="doc-card">
+                <h3 class="doc-title"><i class="fas fa-cogs"></i> Configuration de base</h3>
+                <div class="doc-content">
+                    <p>Pour utiliser nos API, vous devez inclure les headers suivants dans vos requêtes :</p>
+                    <div class="code-block">
+                        <span class="code-keyword">const</span> <span class="code-variable">apiURL</span> = <span class="code-string">"https://crash-gateway-grm-cr.100hp.app/state"</span>;<br>
+                        <span class="code-keyword">const</span> <span class="code-variable">headers</span> = {<br>
+                        &nbsp;&nbsp;<span class="code-string">'customer-id'</span>: <span class="code-string">'077dee8d-c923-4c02-9bee-757573662e69'</span>,<br>
+                        &nbsp;&nbsp;<span class="code-string">'session-id'</span>: <span class="code-string">'SESSION_ID_DU_JEU'</span>,<br>
+                        &nbsp;&nbsp;<span class="code-string">'accept'</span>: <span class="code-string">'application/json'</span>,<br>
+                        };
+                    </div>
+                    <p>Le <code>customer-id</code> est le même pour tous les jeux, tandis que le <code>session-id</code> varie selon le jeu.</p>
+                </div>
+            </div>
+            
+            <div class="doc-card">
+                <h3 class="doc-title"><i class="fas fa-code"></i> Exemple d'intégration</h3>
+                <div class="doc-content">
+                    <p>Voici un exemple complet d'intégration de l'API pour récupérer les coefficients d'arrêt :</p>
+                    <div class="code-block">
+                        <span class="code-comment">// Configuration de l'API</span><br>
+                        <span class="code-keyword">const</span> <span class="code-variable">apiURL</span> = <span class="code-string">"https://crash-gateway-grm-cr.100hp.app/state"</span>;<br>
+                        <span class="code-keyword">const</span> <span class="code-variable">headers</span> = {<br>
+                        &nbsp;&nbsp;<span class="code-string">'customer-id'</span>: <span class="code-string">'077dee8d-c923-4c02-9bee-757573662e69'</span>,<br>
+                        &nbsp;&nbsp;<span class="code-string">'session-id'</span>: <span class="code-string">'95a987ef-72e1-4eaa-a598-64a157a44e75'</span>, <span class="code-comment">// Exemple pour Crash</span><br>
+                        &nbsp;&nbsp;<span class="code-string">'accept'</span>: <span class="code-string">'application/json'</span>,<br>
+                        };<br><br>
+                        
+                        <span class="code-keyword">let</span> <span class="code-variable">coefficientsHistory</span> = [];<br><br>
+                        
+                        <span class="code-comment">// Fonction pour récupérer le coefficient d'arrêt</span><br>
+                        <span class="code-keyword">async function</span> <span class="code-function">fetchStopCoefficient</span>() {<br>
+                        &nbsp;&nbsp;<span class="code-keyword">try</span> {<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;<span class="code-keyword">const</span> <span class="code-variable">response</span> = <span class="code-keyword">await</span> <span class="code-function">fetch</span>(<span class="code-variable">apiURL</span>, { <span class="code-variable">headers</span> });<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;<span class="code-keyword">if</span> (!<span class="code-variable">response</span>.<span class="code-function">ok</span>) <span class="code-keyword">throw new</span> <span class="code-function">Error</span>(<span class="code-string">"Erreur API"</span>);<br><br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;<span class="code-keyword">const</span> <span class="code-variable">data</span> = <span class="code-keyword">await</span> <span class="code-variable">response</span>.<span class="code-function">json</span>();<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;<span class="code-keyword">return</span> <span class="code-variable">data</span>.<span class="code-variable">stopCoefficients</span>?.[<span class="code-number">0</span>] ?? <span class="code-keyword">null</span>;<br>
+                        &nbsp;&nbsp;} <span class="code-keyword">catch</span> (<span class="code-variable">error</span>) {<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;<span class="code-function">console</span>.<span class="code-function">error</span>(<span class="code-string">"Erreur :"</span>, <span class="code-variable">error</span>);<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;<span class="code-keyword">return</span> <span class="code-keyword">null</span>;<br>
+                        &nbsp;&nbsp;}<br>
+                        }
+                    </div>
+                </div>
+            </div>
+            
+            <div class="doc-card">
+                <h3 class="doc-title"><i class="fas fa-lightbulb"></i> Bonnes pratiques</h3>
+                <div class="doc-content">
+                    <ul>
+                        <li>Implémentez une gestion d'erreurs robuste pour gérer les interruptions de service</li>
+                        <li>Utilisez des requêtes asynchrones pour ne pas bloquer l'interface utilisateur</li>
+                        <li>Stockez les données historiques pour analyser les tendances</li>
+                        <li>Limitez la fréquence des requêtes pour éviter de surcharger le serveur</li>
+                        <li>Testez votre intégration avec différents jeux pour valider le comportement</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Modal pour afficher les détails de l'API -->
+    <div class="modal-overlay" id="apiModal">
+        <div class="api-modal">
+            <div class="modal-header">
+                <div class="modal-close" onclick="closeApiModal()">
+                    <i class="fas fa-times"></i>
+                </div>
+                <h2 class="modal-title" id="apiModalTitle">API Details</h2>
+                <p class="modal-subtitle">Informations détaillées sur l'API</p>
+            </div>
+            <div class="modal-content">
+                <div id="apiModalContent">
+                    <!-- Contenu généré dynamiquement -->
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeApiModal()">Fermer</button>
+                <button class="btn btn-primary" onclick="copyApiCode()">
+                    <i class="fas fa-copy"></i> Copier le code
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <nav class="bottom-nav">
+        <div class="nav-item" onclick="window.location.href='accueil.html'">
+            <i class="fas fa-home nav-icon"></i>
+            <span>Accueil</span>
+        </div>
+        <div class="nav-item" onclick="window.location.href='jeux.html'">
+            <i class="fas fa-gamepad nav-icon"></i>
+            <span>Mes Jeux</span>
+        </div>
+        <div class="nav-item" onclick="window.location.href='promotions.html'">
+            <i class="fas fa-gift nav-icon"></i>
+            <span>Promos</span>
+        </div>
+        <div class="nav-item" onclick="window.location.href='profil.html'">
+            <i class="fas fa-user nav-icon"></i>
+            <span>Profil</span>
+        </div>
+        <div class="nav-item active">
+            <i class="fas fa-code nav-icon"></i>
+            <span>API</span>
+        </div>
+    </nav>
+
+    <script>
+        // Données des API disponibles
+        const apiData = [
+            {
+                id: 'crash',
+                name: 'Crash',
+                sessionId: '95a987ef-72e1-4eaa-a598-64a157a44e75',
+                image: 'https://slotcatalog.com/userfiles/image/games/1Win-Games/44753/crash-1win-games-7097116.webp',
+                description: 'API de prédiction pour le jeu Crash',
+                endpoint: 'https://crash-gateway-grm-cr.100hp.app/state'
+            },
+            {
+                id: 'luckyjet',
+                name: 'LuckyJet',
+                sessionId: 'c03177f4-fd3b-4fc9-b990-d021a4da6a53',
+                image: 'https://i.ibb.co/0pJ3v0VD/jsorg.jpg',
+                description: 'API de prédiction pour le jeu LuckyJet',
+                endpoint: 'https://crash-gateway-grm-cr.100hp.app/state'
+            },
+            {
+                id: 'speed-cash',
+                name: 'Speed & Cash',
+                sessionId: '1bcca7b0-acfc-4ffd-b526-01b5e199319d',
+                image: 'https://1wins-bangladesh.com/wp-content/uploads/2025/09/1-about-1win-speed-n-cash-casino-game.webp',
+                description: 'API de prédiction pour le jeu Speed & Cash',
+                endpoint: 'https://crash-gateway-grm-cr.100hp.app/state'
+            },
+            {
+                id: 'rocket-queen',
+                name: 'Rocket Queen',
+                sessionId: '25369bd7-6c50-49d1-846c-8b1cc1ae4239',
+                image: 'https://i.ibb.co/qTx4brW/jsorg.jpg',
+                description: 'API de prédiction pour le jeu Rocket Queen',
+                endpoint: 'https://crash-gateway-grm-cr.100hp.app/state'
+            },
+            {
+                id: 'rocket-x',
+                name: 'Rocket X',
+                sessionId: 'efe4a167-55b2-4bd3-a137-1f3faf6e4fe0',
+                image: 'https://1winbet-th.com/wp-content/uploads/2024/07/rocket-x-at-1win-min.png',
+                description: 'API de prédiction pour le jeu Rocket X',
+                endpoint: 'https://crash-gateway-grm-cr.100hp.app/state'
+            },
+            {
+                id: 'astronaute',
+                name: 'Astronaute',
+                sessionId: '22cc6253-32a8-4aed-95fc-82216b5a314e',
+                image: 'https://astronaut-slotgame.com/images/logo.webp',
+                description: 'API de prédiction pour le jeu Astronaute',
+                endpoint: 'https://crash-gateway-grm-cr.100hp.app/state'
+            },
+            {
+                id: 'crime-empire',
+                name: 'Crime Empire',
+                sessionId: 'c07df0cd-6c3e-4137-ac4e-12219c7127d8',
+                image: 'https://i.ibb.co/YFSrYrTM/jsorg.jpg',
+                description: 'API de prédiction pour le jeu Crime Empire',
+                endpoint: 'https://crash-gateway-grm-cr.100hp.app/state'
+            },
+            {
+                id: 'tropicana',
+                name: 'Tropicana',
+                sessionId: '5da25268-1954-4a9e-a51e-70983eb630a4',
+                image: 'https://slotcatalog.com/userfiles/image/games/100hp-gaming/38701/tropicana-100hp-gaming-7054923.webp',
+                description: 'API de prédiction pour le jeu Tropicana',
+                endpoint: 'https://crash-gateway-grm-cr.100hp.app/state'
+            }
+        ];
+
+        // Variables globales
+        let currentApiId = null;
+
+        // Fonction pour afficher des notifications
+        function showNotification(title, message, type = 'info', duration = 4000) {
+            const notificationSystem = document.getElementById('notificationSystem');
+            const notificationId = 'notification-' + Date.now();
+            
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.id = notificationId;
+            
+            const icons = {
+                success: 'fas fa-check-circle',
+                warning: 'fas fa-exclamation-triangle',
+                error: 'fas fa-times-circle',
+                info: 'fas fa-info-circle'
+            };
+            
+            notification.innerHTML = `
+                <div class="notification-icon">
+                    <i class="${icons[type]}"></i>
+                </div>
+                <div class="notification-content">
+                    <div class="notification-title">${title}</div>
+                    <div class="notification-message">${message}</div>
+                </div>
+                <button class="notification-close" onclick="closeNotification('${notificationId}')">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            
+            notificationSystem.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 10);
+            
+            if (duration > 0) {
+                setTimeout(() => {
+                    closeNotification(notificationId);
+                }, duration);
+            }
+            
+            return notificationId;
+        }
+
+        // Fonction pour fermer une notification
+        function closeNotification(notificationId) {
+            const notification = document.getElementById(notificationId);
+            if (notification) {
+                notification.classList.remove('show');
+                notification.classList.add('hide');
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 400);
+            }
+        }
+
+        // Fonction pour générer les cartes API
+        function generateApiCards() {
+            const apiGrid = document.getElementById('apiGrid');
+            
+            apiData.forEach(api => {
+                const apiCard = document.createElement('div');
+                apiCard.className = 'api-card';
+                apiCard.innerHTML = `
+                    <div class="api-header">
+                        <div class="api-icon">
+                            <i class="fas fa-gamepad"></i>
+                        </div>
+                        <div class="api-name">${api.name}</div>
+                    </div>
+                    <div class="api-content">
+                        <div class="api-image">
+                            <img src="${api.image}" alt="${api.name}">
+                        </div>
+                        <div class="api-info">
+                            <div class="api-info-item">
+                                <span class="api-info-label">Session ID:</span>
+                                <span class="api-info-value">${api.sessionId.substring(0, 8)}...</span>
+                            </div>
+                            <div class="api-info-item">
+                                <span class="api-info-label">Endpoint:</span>
+                                <span class="api-info-value">${api.endpoint}</span>
+                            </div>
+                        </div>
+                        <div class="api-actions">
+                            <button class="btn btn-secondary" onclick="viewApiDetails('${api.id}')">
+                                <i class="fas fa-eye"></i> Détails
+                            </button>
+                            <button class="btn btn-primary" onclick="copySessionId('${api.id}')">
+                                <i class="fas fa-copy"></i> Copier
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                apiGrid.appendChild(apiCard);
+            });
+        }
+
+        // Fonction pour afficher les détails de l'API
+        function viewApiDetails(apiId) {
+            const api = apiData.find(a => a.id === apiId);
+            if (!api) return;
+
+            currentApiId = apiId;
+            
+            document.getElementById('apiModalTitle').textContent = `API ${api.name}`;
+            
+            const apiModalContent = document.getElementById('apiModalContent');
+            apiModalContent.innerHTML = `
+                <div style="margin-bottom: 20px;">
+                    <div class="api-image" style="height: 150px;">
+                        <img src="${api.image}" alt="${api.name}">
+                    </div>
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <h3 style="color: var(--text); margin-bottom: 10px;">Informations de connexion</h3>
+                    <div class="api-info">
+                        <div class="api-info-item">
+                            <span class="api-info-label">Session ID:</span>
+                            <span class="api-info-value" style="font-size: 0.8rem;">${api.sessionId}</span>
+                        </div>
+                        <div class="api-info-item">
+                            <span class="api-info-label">Customer ID:</span>
+                            <span class="api-info-value" style="font-size: 0.8rem;">077dee8d-c923-4c02-9bee-757573662e69</span>
+                        </div>
+                        <div class="api-info-item">
+                            <span class="api-info-label">Endpoint:</span>
+                            <span class="api-info-value" style="font-size: 0.8rem;">${api.endpoint}</span>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <h3 style="color: var(--text); margin-bottom: 10px;">Exemple de code</h3>
+                    <div class="code-block" style="font-size: 0.8rem;">
+                        <span class="code-keyword">const</span> <span class="code-variable">apiURL</span> = <span class="code-string">"${api.endpoint}"</span>;<br>
+                        <span class="code-keyword">const</span> <span class="code-variable">headers</span> = {<br>
+                        &nbsp;&nbsp;<span class="code-string">'customer-id'</span>: <span class="code-string">'077dee8d-c923-4c02-9bee-757573662e69'</span>,<br>
+                        &nbsp;&nbsp;<span class="code-string">'session-id'</span>: <span class="code-string">'${api.sessionId}'</span>,<br>
+                        &nbsp;&nbsp;<span class="code-string">'accept'</span>: <span class="code-string">'application/json'</span>,<br>
+                        };<br><br>
+                        
+                        <span class="code-keyword">async function</span> <span class="code-function">fetchData</span>() {<br>
+                        &nbsp;&nbsp;<span class="code-keyword">try</span> {<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;<span class="code-keyword">const</span> <span class="code-variable">response</span> = <span class="code-keyword">await</span> <span class="code-function">fetch</span>(<span class="code-variable">apiURL</span>, { <span class="code-variable">headers</span> });<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;<span class="code-keyword">if</span> (!<span class="code-variable">response</span>.<span class="code-function">ok</span>) <span class="code-keyword">throw new</span> <span class="code-function">Error</span>(<span class="code-string">"Erreur API"</span>);<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;<span class="code-keyword">const</span> <span class="code-variable">data</span> = <span class="code-keyword">await</span> <span class="code-variable">response</span>.<span class="code-function">json</span>();<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;<span class="code-function">console</span>.<span class="code-function">log</span>(<span class="code-variable">data</span>);<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;<span class="code-keyword">return</span> <span class="code-variable">data</span>;<br>
+                        &nbsp;&nbsp;} <span class="code-keyword">catch</span> (<span class="code-variable">error</span>) {<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;<span class="code-function">console</span>.<span class="code-function">error</span>(<span class="code-string">"Erreur :"</span>, <span class="code-variable">error</span>);<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;<span class="code-keyword">return</span> <span class="code-keyword">null</span>;<br>
+                        &nbsp;&nbsp;}<br>
+                        }
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('apiModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        // Fonction pour fermer la modale API
+        function closeApiModal() {
+            document.getElementById('apiModal').classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+
+        // Fonction pour copier le Session ID
+        function copySessionId(apiId) {
+            const api = apiData.find(a => a.id === apiId);
+            if (!api) return;
+
+            navigator.clipboard.writeText(api.sessionId).then(() => {
+                showNotification(
+                    'Session ID copié',
+                    `Le Session ID pour ${api.name} a été copié dans le presse-papier.`,
+                    'success',
+                    3000
+                );
+            }).catch(err => {
+                console.error('Erreur lors de la copie: ', err);
+                showNotification(
+                    'Erreur',
+                    'Impossible de copier le Session ID.',
+                    'error',
+                    3000
+                );
+            });
+        }
+
+        // Fonction pour copier le code API
+        function copyApiCode() {
+            const api = apiData.find(a => a.id === currentApiId);
+            if (!api) return;
+
+            const code = `const apiURL = "${api.endpoint}";
+const headers = {
+    'customer-id': '077dee8d-c923-4c02-9bee-757573662e69',
+    'session-id': '${api.sessionId}',
+    'accept': 'application/json',
+};
+
+async function fetchData() {
+    try {
+        const response = await fetch(apiURL, { headers });
+        if (!response.ok) throw new Error("Erreur API");
+        const data = await response.json();
+        console.log(data);
+        return data;
+    } catch (error) {
+        console.error("Erreur :", error);
+        return null;
+    }
+}`;
+
+            navigator.clipboard.writeText(code).then(() => {
+                showNotification(
+                    'Code copié',
+                    `Le code d'exemple pour ${api.name} a été copié dans le presse-papier.`,
+                    'success',
+                    3000
+                );
+            }).catch(err => {
+                console.error('Erreur lors de la copie: ', err);
+                showNotification(
+                    'Erreur',
+                    'Impossible de copier le code.',
+                    'error',
+                    3000
+                );
+            });
+        }
+
+        // Initialisation au chargement de la page
+        document.addEventListener('DOMContentLoaded', function() {
+            // Générer les cartes API
+            generateApiCards();
+            
+            // Fermer la modale en cliquant à l'extérieur
+            document.getElementById('apiModal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeApiModal();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

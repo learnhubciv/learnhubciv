@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Politique de Confidentialité - GameHub</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #8A2BE2;
+            --primary-dark: #6A1BB2;
+            --secondary: #FF6B6B;
+            --accent: #00D4FF;
+            --dark: #1A1A2E;
+            --light: #F8F9FA;
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --text: #333333;
+            --text-light: #6C757D;
+            --success: #28A745;
+            --warning: #FFC107;
+            --shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            --radius: 12px;
+            --transition: all 0.3s ease;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #1A1A2E 0%, #16213E 50%, #0F3460 100%);
+            color: var(--light);
+            min-height: 100vh;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .app-container {
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 0 0 80px;
+        }
+
+        /* Header */
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 15px 10px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(26, 26, 46, 0.9);
+            backdrop-filter: blur(10px);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .logo-text {
+            font-size: 1.3rem;
+            font-weight: 700;
+            background: linear-gradient(to right, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Content Container */
+        .content-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px 15px;
+        }
+
+        .content-card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 30px;
+            box-shadow: var(--shadow);
+            animation: fadeInUp 0.5s ease forwards;
+            opacity: 0;
+            color: var(--text);
+        }
+
+        .content-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid rgba(138, 43, 226, 0.1);
+        }
+
+        .content-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+
+        .content-subtitle {
+            font-size: 1rem;
+            color: var(--text-light);
+        }
+
+        .content-body {
+            line-height: 1.8;
+            font-size: 15px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(138, 43, 226, 0.1);
+        }
+
+        .section-content {
+            margin-bottom: 15px;
+        }
+
+        .section-content p {
+            margin-bottom: 12px;
+        }
+
+        .section-content ul {
+            margin: 10px 0 15px 20px;
+        }
+
+        .section-content li {
+            margin-bottom: 8px;
+            position: relative;
+        }
+
+        .section-content li:before {
+            content: "•";
+            color: var(--primary);
+            font-weight: bold;
+            display: inline-block;
+            width: 1em;
+            margin-left: -1em;
+        }
+
+        .privacy-notice {
+            background: rgba(0, 212, 255, 0.1);
+            border-left: 4px solid var(--accent);
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+
+        .privacy-notice strong {
+            color: var(--accent);
+        }
+
+        .security-badge {
+            background: rgba(138, 43, 226, 0.1);
+            border-left: 4px solid var(--primary);
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .security-badge i {
+            color: var(--primary);
+            font-size: 24px;
+        }
+
+        .security-badge p {
+            margin: 0;
+            flex: 1;
+        }
+
+        .security-badge strong {
+            color: var(--primary);
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            font-size: 14px;
+        }
+
+        .data-table th, .data-table td {
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            padding: 10px;
+            text-align: left;
+        }
+
+        .data-table th {
+            background: rgba(138, 43, 226, 0.1);
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .data-table tr:nth-child(even) {
+            background: rgba(0, 0, 0, 0.02);
+        }
+
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--primary);
+            color: white;
+            padding: 12px 20px;
+            border-radius: var(--radius);
+            text-decoration: none;
+            font-weight: 600;
+            transition: var(--transition);
+            margin-top: 30px;
+            border: none;
+            cursor: pointer;
+        }
+
+        .back-button:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(138, 43, 226, 0.3);
+        }
+
+        .last-updated {
+            text-align: right;
+            font-size: 13px;
+            color: var(--text-light);
+            margin-top: 20px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .content-container {
+                padding: 15px;
+            }
+            
+            .content-card {
+                padding: 20px;
+            }
+            
+            .content-title {
+                font-size: 1.6rem;
+            }
+            
+            .section-title {
+                font-size: 1.2rem;
+            }
+            
+            .data-table {
+                font-size: 13px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .content-card {
+                padding: 15px;
+            }
+            
+            .content-title {
+                font-size: 1.4rem;
+            }
+            
+            .section {
+                margin-bottom: 20px;
+            }
+            
+            .data-table {
+                display: block;
+                overflow-x: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo" onclick="window.location.href='login.html'">
+                <div class="logo-icon">
+                    <i class="fas fa-dice"></i>
+                </div>
+                <div class="logo-text">GameHub</div>
+            </div>
+        </header>
+
+        <!-- Content -->
+        <div class="content-container">
+            <div class="content-card">
+                <div class="content-header">
+                    <h1 class="content-title">Politique de Confidentialité</h1>
+                    <p class="content-subtitle">Comment nous protégeons et utilisons vos informations personnelles</p>
+                </div>
+
+                <div class="content-body">
+                    <div class="privacy-notice">
+                        <p><strong>Votre vie privée est importante pour nous.</strong> Cette politique explique comment nous collectons, utilisons et protégeons vos informations personnelles dans le cadre de nos services GameHub.</p>
+                    </div>
+
+                    <div class="section">
+                        <h2 class="section-title">1. Collecte des Informations</h2>
+                        <div class="section-content">
+                            <p>Nous collectons les informations suivantes pour vous offrir la meilleure expérience possible :</p>
+                            
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Type d'information</th>
+                                        <th>Exemples</th>
+                                        <th>Finalité</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Informations d'inscription</td>
+                                        <td>Nom d'utilisateur, email, mot de passe</td>
+                                        <td>Création et gestion de votre compte</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Informations de profil</td>
+                                        <td>Code de parrainage, préférences, historique</td>
+                                        <td>Personnalisation de votre expérience</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Informations financières</td>
+                                        <td>Historique d'achats, retraits, commissions</td>
+                                        <td>Gestion sécurisée des transactions</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Données d'utilisation</td>
+                                        <td>Jeux utilisés, préférences, interactions</td>
+                                        <td>Amélioration continue de nos services</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Données techniques</td>
+                                        <td>Adresse IP, type d'appareil, navigateur</td>
+                                        <td>Sécurité et optimisation technique</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h2 class="section-title">2. Utilisation des Informations</h2>
+                        <div class="section-content">
+                            <p>Nous utilisons vos informations exclusivement pour :</p>
+                            <ul>
+                                <li>Fournir et améliorer nos services de bots gaming</li>
+                                <li>Gérer votre compte utilisateur et vos préférences</li>
+                                <li>Traiter vos paiements et retraits de manière sécurisée</li>
+                                <li>Gérer notre programme de parrainage avec commissions</li>
+                                <li>Vous envoyer des notifications importantes et des mises à jour</li>
+                                <li>Assurer la sécurité et l'intégrité de notre plateforme</li>
+                                <li>Nous conformer aux obligations légales applicables</li>
+                                <li>Personnaliser votre expérience utilisateur</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="security-badge">
+                        <i class="fas fa-shield-alt"></i>
+                        <p>
+                            <strong>Protection avancée des données :</strong><br>
+                            Nous utilisons des technologies de sécurité de pointe incluant le chiffrement des données sensibles, l'authentification multi-facteurs, et des systèmes de détection d'intrusion pour garantir la sécurité maximale de vos informations.
+                        </p>
+                    </div>
+
+                    <div class="section">
+                        <h2 class="section-title">3. Protection des Données</h2>
+                        <div class="section-content">
+                            <p><strong>3.1 Mesures de sécurité</strong><br>
+                            Nous avons mis en place des mesures de sécurité avancées :</p>
+                            <ul>
+                                <li>Chiffrement des données sensibles en transit et au repos</li>
+                                <li>Authentification sécurisée avec validation des sessions</li>
+                                <li>Surveillance continue des accès et des activités</li>
+                                <li>Sauvegardes régulières et redondantes des données</li>
+                                <li>Systèmes de détection et prévention des intrusions</li>
+                                <li>Audits de sécurité réguliers</li>
+                            </ul>
+                            
+                            <p><strong>3.2 Accès limité</strong><br>
+                            Seul le personnel autorisé ayant besoin d'accéder à vos informations pour fournir nos services a accès à vos données, sous stricte confidentialité.</p>
+                            
+                            <p><strong>3.3 Formation du personnel</strong><br>
+                            Tous nos employés suivent une formation régulière sur la protection des données et la confidentialité.</p>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h2 class="section-title">4. Partage des Informations</h2>
+                        <div class="section-content">
+                            <p><strong>Nous ne vendons ni ne louons jamais vos informations personnelles à des tiers.</strong></p>
+                            <p>Nous pouvons partager vos données uniquement dans les cas suivants :</p>
+                            <ul>
+                                <li><strong>Avec votre consentement explicite</strong> : Pour des services spécifiques que vous demandez</li>
+                                <li><strong>Prestataires de services</strong> : Processeurs de paiement sécurisés, services d'hébergement, uniquement dans le cadre strict de nos services</li>
+                                <li><strong>Obligations légales</strong> : Pour répondre à des requêtes légales valides ou protéger nos droits</li>
+                                <li><strong>Protection de la sécurité</strong> : Pour prévenir la fraude, les abus ou les activités illégales</li>
+                                <li><strong>Transaction commerciale</strong> : En cas de fusion, acquisition ou vente d'actifs, avec garantie de confidentialité</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h2 class="section-title">5. Vos Droits</h2>
+                        <div class="section-content">
+                            <p>Conformément aux réglementations sur la protection des données, vous disposez des droits suivants :</p>
+                            <ul>
+                                <li><strong>Droit d'accès</strong> : Obtenir une copie de vos informations personnelles</li>
+                                <li><strong>Droit de rectification</strong> : Corriger des informations inexactes ou incomplètes</li>
+                                <li><strong>Droit à l'effacement</strong> : Supprimer votre compte et vos données personnelles</li>
+                                <li><strong>Droit d'opposition</strong> : Vous opposer au traitement de vos données</li>
+                                <li><strong>Droit à la portabilité</strong> : Recevoir vos données dans un format structuré</li>
+                                <li><strong>Droit de limitation</strong> : Limiter le traitement de vos données</li>
+                                <li><strong>Droit de retrait du consentement</strong> : Retirer votre consentement à tout moment</li>
+                            </ul>
+                            
+                            <p>Pour exercer ces droits, contactez-nous à : <strong>gamehubciv@gmail.com</strong></p>
+                            <p>Nous nous engageons à répondre à votre demande dans un délai maximum de 30 jours.</p>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h2 class="section-title">6. Cookies et Technologies Similaires</h2>
+                        <div class="section-content">
+                            <p>Nous utilisons des cookies et technologies similaires pour :</p>
+                            <ul>
+                                <li>Maintenir votre session de connexion en toute sécurité</li>
+                                <li>Mémoriser vos préférences et paramètres</li>
+                                <li>Analyser l'utilisation de nos services pour les améliorer</li>
+                                <li>Assurer la sécurité et prévenir la fraude</li>
+                                <li>Fournir des fonctionnalités personnalisées</li>
+                            </ul>
+                            <p>Vous pouvez configurer votre navigateur pour refuser les cookies, mais cela peut limiter certaines fonctionnalités essentielles de GameHub.</p>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h2 class="section-title">7. Données des Mineurs</h2>
+                        <div class="section-content">
+                            <p>Nos services sont strictement réservés aux personnes âgées de 18 ans ou plus. Nous ne collectons pas sciemment d'informations personnelles de mineurs. Si nous découvrons qu'un mineur nous a fourni des informations personnelles sans consentement parental, nous les supprimerons immédiatement de nos serveurs.</p>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h2 class="section-title">8. Conservation des Données</h2>
+                        <div class="section-content">
+                            <p>Nous conservons vos informations personnelles uniquement aussi longtemps que nécessaire pour :</p>
+                            <ul>
+                                <li>Fournir les services que vous avez demandés</li>
+                                <li>Respecter nos obligations légales et réglementaires</li>
+                                <li>Résoudre les litiges et faire respecter nos accords</li>
+                                <li>Maintenir la sécurité de nos systèmes</li>
+                            </ul>
+                            <p>Lorsque vos données ne sont plus nécessaires, elles sont supprimées de manière sécurisée.</p>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h2 class="section-title">9. Transferts Internationaux</h2>
+                        <div class="section-content">
+                            <p>Vos données peuvent être traitées dans des pays autres que le vôtre. Nous nous assurons que tous les transferts de données internationaux sont effectués avec des garanties de protection appropriées et conformément aux lois applicables sur la protection des données.</p>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h2 class="section-title">10. Modifications de cette Politique</h2>
+                        <div class="section-content">
+                            <p>Nous pouvons mettre à jour cette politique occasionnellement pour refléter les changements dans nos pratiques ou pour d'autres raisons opérationnelles, légales ou réglementaires. Nous vous informerons de tout changement significatif par email ou via une notification dans l'application. Nous vous encourageons à consulter régulièrement cette politique.</p>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h2 class="section-title">11. Contact</h2>
+                        <div class="section-content">
+                            <p>Pour toute question concernant cette politique de confidentialité ou pour exercer vos droits :</p>
+                            <p><strong>Email :</strong> gamehubciv@gmail.com</p>
+                            <p><strong>Délai de réponse :</strong> Sous 48 heures ouvrées</p>
+                            <p><strong>Adresse :</strong> GameHub Privacy Team, Abidjan, Côte d'Ivoire</p>
+                            <p><strong>Heures de support :</strong> Lundi - Samedi, 9h00 - 20h00 (GMT)</p>
+                        </div>
+                    </div>
+
+                    <button class="back-button" onclick="window.location.href='login.html'">
+                        <i class="fas fa-arrow-left"></i> Retour à l'inscription
+                    </button>
+
+                    <div class="last-updated">
+                        Dernière mise à jour : 15 janvier 2024
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Animation au chargement
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => {
+                document.querySelector('.content-card').style.opacity = '1';
+            }, 100);
+            
+            // Gestion du retour
+            document.querySelector('.back-button').addEventListener('click', function() {
+                window.history.back();
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1474 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notifications - GameHub</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Import Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+        import { 
+            getAuth,
+            onAuthStateChanged
+        } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
+        import { 
+            getFirestore,
+            collection,
+            query,
+            where,
+            orderBy,
+            getDocs,
+            updateDoc,
+            doc,
+            onSnapshot,
+            limit,
+            arrayUnion,
+            getDoc,
+            writeBatch  // AJOUTÉ
+        } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+        
+        // Configuration Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyDhySV3lXOlCQ8fMIYRlzs0YpMg6MZ_Ixo",
+            authDomain: "gamehub-e45ea.firebaseapp.com",
+            projectId: "gamehub-e45ea",
+            storageBucket: "gamehub-e45ea.firebasestorage.app",
+            messagingSenderId: "609288909968",
+            appId: "1:609288909968:web:45f3716ce6b2d4970d1415"
+        };
+
+        // Initialiser Firebase
+        const app = initializeApp(firebaseConfig);
+        window.auth = getAuth(app);
+        const db = getFirestore(app);
+        
+        // Fonction améliorée pour charger les notifications
+        window.loadNotifications = async function(userId) {
+            console.log("🔔 Chargement des notifications pour:", userId);
+            
+            try {
+                const notificationsRef = collection(db, 'notifications');
+                let notifications = [];
+                
+                // Récupérer toutes les notifications pour cet utilisateur (personnelles + globales)
+                const q = query(
+                    notificationsRef,
+                    where('target', 'in', [userId, 'all'])
+                );
+                
+                console.log("📡 Exécution de la requête Firestore...");
+                const querySnapshot = await getDocs(q);
+                
+                console.log("✅ Notifications trouvées:", querySnapshot.size);
+                
+                querySnapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    const id = docSnap.id;
+                    
+                    // Déterminer si lue par cet utilisateur
+                    let isRead = false;
+                    
+                    if (data.target === 'all') {
+                        // Notification globale : vérifier si dans readBy
+                        isRead = data.readBy && data.readBy.includes(userId);
+                    } else {
+                        // Notification personnelle : vérifier le champ read
+                        isRead = data.read === true;
+                    }
+                    
+                    console.log(`📄 Notification ${id}: ${data.title} - Pour: ${data.target} - Lu: ${isRead}`);
+                    
+                    notifications.push({
+                        id: id,
+                        title: data.title || "Notification",
+                        message: data.message || "",
+                        type: data.type || "info",
+                        target: data.target || "all",
+                        read: isRead,
+                        readBy: data.readBy || [],
+                        createdAt: data.createdAt || new Date().toISOString(),
+                        action: data.action,
+                        actionText: data.actionText,
+                        createdBy: data.createdBy || "Système",
+                        iconType: data.target === 'all' ? 'global' : 'personal'
+                    });
+                });
+                
+                // Trier par date (plus récent en premier)
+                notifications.sort((a, b) => {
+                    return new Date(b.createdAt) - new Date(a.createdAt);
+                });
+                
+                console.log("📊 Total notifications pour cet utilisateur:", notifications.length);
+                return notifications;
+                
+            } catch (error) {
+                console.error('❌ Erreur lors du chargement des notifications:', error);
+                // Retourner un tableau vide en cas d'erreur
+                return [];
+            }
+        };
+        
+        // Fonction pour marquer une notification comme lue
+        window.markAsRead = async function(notificationId, userId) {
+            try {
+                console.log("📝 Marquage comme lu:", notificationId, "pour:", userId);
+                
+                const notificationRef = doc(db, 'notifications', notificationId);
+                
+                // Vérifier d'abord que la notification existe
+                const notificationDoc = await getDoc(notificationRef);
+                if (!notificationDoc.exists()) {
+                    console.error("❌ Notification non trouvée:", notificationId);
+                    return false;
+                }
+                
+                const notificationData = notificationDoc.data();
+                
+                // Vérifier que l'utilisateur peut marquer cette notification comme lue
+                if (notificationData.target !== 'all' && notificationData.target !== userId) {
+                    console.error("🚨 Accès non autorisé à cette notification");
+                    return false;
+                }
+                
+                // Mettre à jour selon le type de notification
+                if (notificationData.target === 'all') {
+                    // Notification globale : ajouter l'utilisateur à readBy
+                    await updateDoc(notificationRef, {
+                        readBy: arrayUnion(userId)
+                    });
+                    console.log("✅ Notification globale marquée comme lue (readBy)");
+                } else {
+                    // Notification personnelle : mettre read à true
+                    await updateDoc(notificationRef, {
+                        read: true
+                    });
+                    console.log("✅ Notification personnelle marquée comme lue (read=true)");
+                }
+                
+                return true;
+                
+            } catch (error) {
+                console.error('❌ Erreur lors du marquage comme lu:', error);
+                return false;
+            }
+        };
+        
+        // Fonction pour marquer toutes les notifications comme lues
+        window.markAllAsRead = async function(userId) {
+            try {
+                console.log("📝 Marquage de TOUTES les notifications comme lues pour:", userId);
+                
+                const notificationsRef = collection(db, 'notifications');
+                
+                // Récupérer toutes les notifications pour cet utilisateur
+                const q = query(
+                    notificationsRef,
+                    where('target', 'in', [userId, 'all'])
+                );
+                
+                const querySnapshot = await getDocs(q);
+                
+                if (querySnapshot.empty) {
+                    console.log("✅ Aucune notification à marquer comme lue");
+                    return true;
+                }
+                
+                const batch = writeBatch(db);
+                let count = 0;
+                
+                querySnapshot.forEach((docSnap) => {
+                    const data = docSnap.data();
+                    
+                    if (data.target === 'all') {
+                        // Notification globale : ajouter à readBy
+                        if (!data.readBy || !data.readBy.includes(userId)) {
+                            batch.update(docSnap.ref, {
+                                readBy: arrayUnion(userId)
+                            });
+                            count++;
+                        }
+                    } else {
+                        // Notification personnelle : mettre read à true
+                        if (!data.read) {
+                            batch.update(docSnap.ref, {
+                                read: true
+                            });
+                            count++;
+                        }
+                    }
+                });
+                
+                if (count > 0) {
+                    await batch.commit();
+                    console.log(`✅ ${count} notifications marquées comme lues`);
+                } else {
+                    console.log("ℹ️ Toutes les notifications étaient déjà lues");
+                }
+                
+                return true;
+                
+            } catch (error) {
+                console.error('❌ Erreur lors du marquage de toutes comme lues:', error);
+                return false;
+            }
+        };
+        
+        // Fonction pour compter les notifications non lues
+        window.countUnreadNotifications = async function(userId) {
+            try {
+                const notifications = await window.loadNotifications(userId);
+                const unreadCount = notifications.filter(notif => !notif.read).length;
+                
+                console.log("🔢 Notifications non lues:", unreadCount);
+                return unreadCount;
+                
+            } catch (error) {
+                console.error('❌ Erreur lors du comptage des notifications non lues:', error);
+                return 0;
+            }
+        };
+        
+        // Fonction pour afficher les notifications
+        async function displayNotifications(notifications) {
+            console.log("🎨 Affichage des notifications:", notifications.length);
+            
+            const container = document.getElementById('notificationsContainer');
+            if (!container) {
+                console.error("❌ Conteneur de notifications introuvable!");
+                return;
+            }
+            
+            if (!notifications || notifications.length === 0) {
+                console.log("ℹ️ Aucune notification à afficher");
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">
+                            <i class="fas fa-bell-slash"></i>
+                        </div>
+                        <h3>Aucune notification</h3>
+                        <p>Vous n'avez pas encore de notifications. Revenez plus tard !</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '';
+            
+            notifications.forEach((notification) => {
+                const date = new Date(notification.createdAt);
+                const formattedDate = date.toLocaleDateString('fr-FR', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                
+                // Déterminer l'icône
+                const iconClass = getNotificationIcon(notification.type);
+                const badgeClass = notification.read ? '' : 'unread';
+                const iconType = notification.iconType || notification.type;
+                
+                html += `
+                    <div class="notification-item ${badgeClass}" data-id="${notification.id}">
+                        <div class="notification-icon ${iconType}">
+                            <i class="${iconClass}"></i>
+                        </div>
+                        <div class="notification-content">
+                            <div class="notification-header">
+                                <h4 class="notification-title">${escapeHtml(notification.title)}</h4>
+                                <span class="notification-time">${formattedDate}</span>
+                            </div>
+                            <p class="notification-message">${escapeHtml(notification.message)}</p>
+                            ${notification.actionText ? `
+                                <div class="notification-actions">
+                                    <button class="action-btn" onclick="handleNotificationAction('${notification.action}', '${escapeHtml(notification.actionText)}')">
+                                        ${escapeHtml(notification.actionText)}
+                                    </button>
+                                </div>
+                            ` : ''}
+                            <div class="notification-source">
+                                <small>${notification.iconType === 'global' ? '📢 Notification globale' : '👤 Notification personnelle'}</small>
+                            </div>
+                        </div>
+                        ${!notification.read ? '<div class="unread-badge"></div>' : ''}
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+            
+            // Ajouter les événements de clic
+            document.querySelectorAll('.notification-item').forEach(item => {
+                item.addEventListener('click', async function() {
+                    const notificationId = this.getAttribute('data-id');
+                    const user = window.auth.currentUser;
+                    
+                    if (!notificationId || !user) return;
+                    
+                    console.log("👆 Clic sur notification:", notificationId);
+                    
+                    // Marquer comme lu
+                    const success = await window.markAsRead(notificationId, user.uid);
+                    if (success) {
+                        // Mettre à jour l'affichage
+                        this.classList.remove('unread');
+                        const badge = this.querySelector('.unread-badge');
+                        if (badge) badge.remove();
+                        
+                        // Mettre à jour le compteur
+                        updateUnreadCount(user.uid);
+                        
+                        // Signaler au profil que les notifications ont été mises à jour
+                        window.localStorage.setItem('notificationsUpdated', Date.now().toString());
+                    }
+                });
+            });
+        }
+        
+        // Fonction pour échapper le HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Fonction pour obtenir l'icône
+        function getNotificationIcon(type) {
+            const icons = {
+                'global': 'fas fa-bullhorn',
+                'personal': 'fas fa-user-circle',
+                'info': 'fas fa-info-circle',
+                'success': 'fas fa-check-circle',
+                'warning': 'fas fa-exclamation-triangle',
+                'error': 'fas fa-times-circle',
+                'promotion': 'fas fa-gift',
+                'withdrawal': 'fas fa-money-bill-wave',
+                'referral': 'fas fa-user-friends'
+            };
+            return icons[type] || 'fas fa-bell';
+        }
+        
+        // Fonction pour mettre à jour le compteur
+        async function updateUnreadCount(userId) {
+            try {
+                const count = await window.countUnreadNotifications(userId);
+                
+                const badge = document.getElementById('unreadCountBadge');
+                const pageTitle = document.getElementById('pageTitle');
+                
+                if (badge) {
+                    if (count > 0) {
+                        badge.textContent = count > 99 ? '99+' : count;
+                        badge.style.display = 'flex';
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                }
+                
+                if (pageTitle) {
+                    pageTitle.textContent = count > 0 ? `Notifications (${count})` : 'Notifications';
+                }
+                
+            } catch (error) {
+                console.error('❌ Erreur lors de la mise à jour du compteur:', error);
+            }
+        }
+        
+        // Fonction pour gérer les actions
+        window.handleNotificationAction = function(action, actionText) {
+            console.log("🚀 Action:", action);
+            
+            switch(action) {
+                case 'go_to_profile':
+                    window.location.href = 'profil.html';
+                    break;
+                case 'go_to_withdrawal':
+                    window.location.href = 'profil.html';
+                    setTimeout(() => {
+                        const withdrawBtn = document.getElementById('withdrawEarnings');
+                        if (withdrawBtn) withdrawBtn.click();
+                    }, 500);
+                    break;
+                case 'go_to_referrals':
+                    window.location.href = 'profil.html';
+                    break;
+                case 'go_to_games':
+                    window.location.href = 'jeux.html';
+                    break;
+                case 'go_to_promotions':
+                    window.location.href = 'promotions.html';
+                    break;
+                default:
+                    console.log('⚠️ Action non reconnue:', action);
+            }
+        };
+        
+        // Fonction pour rafraîchir les notifications
+        window.refreshNotifications = async function() {
+            try {
+                console.log("🔄 Rafraîchissement des notifications");
+                const user = window.auth.currentUser;
+                if (!user) return;
+                
+                const notifications = await window.loadNotifications(user.uid);
+                await displayNotifications(notifications);
+                await updateUnreadCount(user.uid);
+                
+                showNotification(
+                    'Actualisé',
+                    'Les notifications ont été rafraîchies.',
+                    'success',
+                    2000
+                );
+                
+            } catch (error) {
+                console.error('❌ Erreur lors du rafraîchissement:', error);
+                showNotification(
+                    'Erreur',
+                    'Impossible de rafraîchir les notifications.',
+                    'error',
+                    3000
+                );
+            }
+        };
+        
+        // Écouter les nouvelles notifications en temps réel
+        function listenForNewNotifications(userId) {
+            console.log("👂 Écoute des nouvelles notifications pour:", userId);
+            
+            try {
+                const notificationsRef = collection(db, 'notifications');
+                const q = query(
+                    notificationsRef,
+                    where('target', 'in', [userId, 'all']),
+                    orderBy('createdAt', 'desc'),
+                    limit(20)
+                );
+                
+                onSnapshot(q, (snapshot) => {
+                    snapshot.docChanges().forEach((change) => {
+                        if (change.type === 'added') {
+                            const data = change.doc.data();
+                            console.log('➕ Nouvelle notification reçue:', data.title);
+                            
+                            // Rafraîchir la liste
+                            if (window.auth.currentUser) {
+                                setTimeout(() => {
+                                    window.refreshNotifications();
+                                }, 500);
+                            }
+                        }
+                    });
+                });
+                
+            } catch (error) {
+                console.error('❌ Erreur lors de l\'écoute des notifications:', error);
+            }
+        }
+        
+        // Vérifier l'état d'authentification
+        onAuthStateChanged(window.auth, async (user) => {
+            console.log("🔐 État d'authentification changé:", user ? "Connecté" : "Déconnecté");
+            
+            if (user) {
+                console.log("👤 Utilisateur connecté:", user.uid);
+                
+                if (!user.emailVerified) {
+                    console.warn("⚠️ Email non vérifié");
+                    showNotification('Email non vérifié', 'Veuillez vérifier votre email.', 'warning', 3000);
+                    setTimeout(() => {
+                        window.location.href = 'login.html';
+                    }, 3000);
+                    return;
+                }
+                
+                console.log("📥 Chargement initial des notifications...");
+                
+                // Charger et afficher les notifications
+                const notifications = await window.loadNotifications(user.uid);
+                await displayNotifications(notifications);
+                
+                // Mettre à jour le compteur
+                await updateUnreadCount(user.uid);
+                
+                // Écouter les nouvelles notifications
+                listenForNewNotifications(user.uid);
+                
+                // Signaler que l'utilisateur est sur la page notifications
+                window.localStorage.setItem('lastNotificationVisit', Date.now().toString());
+                
+            } else {
+                console.log("🚪 Redirection vers login...");
+                window.location.href = 'login.html';
+            }
+        });
+        
+        // Rafraîchir automatiquement
+        setInterval(async () => {
+            const user = window.auth.currentUser;
+            if (user) {
+                console.log("⏰ Rafraîchissement automatique...");
+                await updateUnreadCount(user.uid);
+            }
+        }, 30000);
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #8A2BE2;
+            --primary-dark: #6A1BB2;
+            --secondary: #FF6B6B;
+            --accent: #00D4FF;
+            --dark: #1A1A2E;
+            --light: #F8F9FA;
+            --card-bg: rgba(255, 255, 255, 0.98);
+            --text: #333333;
+            --text-light: #6C757D;
+            --success: #28A745;
+            --warning: #FFC107;
+            --info: #17A2B8;
+            --shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            --radius: 12px;
+            --transition: all 0.3s ease;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #1A1A2E 0%, #16213E 50%, #0F3460 100%);
+            color: var(--light);
+            min-height: 100vh;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .app-container {
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 0 0 80px;
+        }
+
+        /* Header */
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 15px 10px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(26, 26, 46, 0.9);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .logo-text {
+            font-size: 1.3rem;
+            font-weight: 700;
+            background: linear-gradient(to right, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .icon-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: var(--light);
+            transition: var(--transition);
+            cursor: pointer;
+            position: relative;
+        }
+
+        .icon-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: var(--secondary);
+            color: white;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            font-size: 10px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Page Title */
+        .page-title {
+            padding: 15px 15px 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .page-title h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: white;
+        }
+
+        .page-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .action-btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--light);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .action-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        /* Notifications Container */
+        .notifications-container {
+            padding: 0 15px;
+        }
+
+        /* Notification Item */
+        .notification-item {
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: var(--radius);
+            padding: 15px;
+            margin-bottom: 12px;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            display: flex;
+            gap: 12px;
+            position: relative;
+            cursor: pointer;
+            animation: fadeInUp 0.3s ease forwards;
+        }
+
+        .notification-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+            background: rgba(255, 255, 255, 1);
+        }
+
+        .notification-item.unread {
+            border-left: 4px solid var(--primary);
+            background: rgba(138, 43, 226, 0.12);
+        }
+
+        .notification-item.unread:hover {
+            background: rgba(138, 43, 226, 0.15);
+        }
+
+        .notification-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .notification-icon.global {
+            background: rgba(23, 162, 184, 0.2);
+            color: var(--info);
+        }
+
+        .notification-icon.personal {
+            background: rgba(138, 43, 226, 0.2);
+            color: var(--primary);
+        }
+
+        .notification-icon.info {
+            background: rgba(0, 212, 255, 0.2);
+            color: var(--accent);
+        }
+
+        .notification-icon.success {
+            background: rgba(40, 167, 69, 0.2);
+            color: var(--success);
+        }
+
+        .notification-icon.warning {
+            background: rgba(255, 193, 7, 0.2);
+            color: #E6A800;
+        }
+
+        .notification-icon.error {
+            background: rgba(255, 107, 107, 0.2);
+            color: #FF3333;
+        }
+
+        .notification-icon.promotion {
+            background: rgba(255, 193, 7, 0.2);
+            color: #FF9800;
+        }
+
+        .notification-icon.withdrawal {
+            background: rgba(0, 200, 83, 0.2);
+            color: #00C853;
+        }
+
+        .notification-icon.referral {
+            background: rgba(156, 39, 176, 0.2);
+            color: #9C27B0;
+        }
+
+        .notification-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .notification-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
+        .notification-title {
+            font-weight: 700;
+            color: #222222;
+            font-size: 14px;
+            margin-right: 10px;
+            line-height: 1.3;
+        }
+
+        .notification-time {
+            font-size: 11px;
+            color: #666666;
+            flex-shrink: 0;
+            font-weight: 500;
+        }
+
+        .notification-message {
+            color: #444444;
+            font-size: 13px;
+            line-height: 1.5;
+            margin-bottom: 8px;
+            font-weight: 400;
+        }
+
+        .notification-source {
+            font-size: 10px;
+            color: #888888;
+            margin-top: 5px;
+            opacity: 0.9;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+        }
+
+        .notification-actions {
+            margin-top: 12px;
+        }
+
+        .notification-actions .action-btn {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            padding: 8px 16px;
+            font-size: 12px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: 0 2px 4px rgba(138, 43, 226, 0.2);
+        }
+
+        .notification-actions .action-btn:hover {
+            background: linear-gradient(135deg, var(--primary-dark), #5a189a);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(138, 43, 226, 0.3);
+        }
+
+        .unread-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 10px;
+            height: 10px;
+            background: var(--primary);
+            border-radius: 50%;
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666666;
+        }
+
+        .empty-icon {
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            color: #999999;
+            margin: 0 auto 20px;
+            border: 2px dashed rgba(0, 0, 0, 0.1);
+        }
+
+        .empty-state h3 {
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+            color: #333333;
+            font-weight: 600;
+        }
+
+        .empty-state p {
+            font-size: 14px;
+            max-width: 300px;
+            margin: 0 auto;
+            color: #666666;
+            line-height: 1.5;
+        }
+
+        /* Loading State */
+        .loading {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-light);
+        }
+
+        .loading-spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(26, 26, 46, 0.95);
+            backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: space-around;
+            padding: 12px 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 100;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: var(--text-light);
+            font-size: 11px;
+            transition: var(--transition);
+            cursor: pointer;
+        }
+
+        .nav-item.active {
+            color: var(--accent);
+        }
+
+        .nav-icon {
+            font-size: 18px;
+        }
+
+        /* Système de notifications élégant */
+        .notification-system {
+            position: fixed;
+            top: 80px;
+            right: 15px;
+            z-index: 2000;
+            max-width: 320px;
+        }
+
+        .notification {
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: var(--radius);
+            padding: 15px;
+            margin-bottom: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            border-left: 4px solid var(--primary);
+            transform: translateX(400px);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        .notification.hide {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+
+        .notification.success {
+            border-left-color: var(--success);
+        }
+
+        .notification.warning {
+            border-left-color: var(--warning);
+        }
+
+        .notification.error {
+            border-left-color: var(--secondary);
+        }
+
+        .notification.info {
+            border-left-color: var(--accent);
+        }
+
+        .notification .notification-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .notification.success .notification-icon {
+            background: rgba(40, 167, 69, 0.2);
+            color: var(--success);
+        }
+
+        .notification.warning .notification-icon {
+            background: rgba(255, 193, 7, 0.2);
+            color: var(--warning);
+        }
+
+        .notification.error .notification-icon {
+            background: rgba(255, 107, 107, 0.2);
+            color: var(--secondary);
+        }
+
+        .notification.info .notification-icon {
+            background: rgba(0, 212, 255, 0.2);
+            color: var(--accent);
+        }
+
+        .notification .notification-content {
+            flex: 1;
+        }
+
+        .notification .notification-title {
+            font-weight: 600;
+            color: #222222;
+            margin-bottom: 4px;
+            font-size: 14px;
+        }
+
+        .notification .notification-message {
+            color: #444444;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        .notification-close {
+            background: none;
+            border: none;
+            color: #888888;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: var(--transition);
+            flex-shrink: 0;
+        }
+
+        .notification-close:hover {
+            background: rgba(0, 0, 0, 0.05);
+            color: #222222;
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Support pour les modes sombre/clair du système */
+        @media (prefers-color-scheme: dark) {
+            .notification-item {
+                background: rgba(40, 40, 60, 0.95);
+                border: 1px solid rgba(255, 255, 255, 0.08);
+            }
+
+            .notification-item:hover {
+                background: rgba(45, 45, 65, 0.98);
+            }
+
+            .notification-item.unread {
+                background: rgba(138, 43, 226, 0.2);
+                border-left: 4px solid var(--primary);
+            }
+
+            .notification-item.unread:hover {
+                background: rgba(138, 43, 226, 0.25);
+            }
+
+            .notification-title {
+                color: #FFFFFF;
+            }
+
+            .notification-time {
+                color: #AAAAAA;
+            }
+
+            .notification-message {
+                color: #CCCCCC;
+            }
+
+            .notification-source {
+                color: #999999;
+            }
+
+            .empty-icon {
+                background: rgba(255, 255, 255, 0.05);
+                color: #AAAAAA;
+                border: 2px dashed rgba(255, 255, 255, 0.1);
+            }
+
+            .empty-state h3 {
+                color: #FFFFFF;
+            }
+
+            .empty-state p {
+                color: #AAAAAA;
+            }
+
+            .unread-badge {
+                box-shadow: 0 0 0 2px rgba(40, 40, 60, 0.95);
+            }
+
+            /* Mode sombre pour les notifications système */
+            .notification {
+                background: rgba(40, 40, 60, 0.98);
+                border: 1px solid rgba(255, 255, 255, 0.08);
+            }
+
+            .notification .notification-title {
+                color: #FFFFFF;
+            }
+
+            .notification .notification-message {
+                color: #CCCCCC;
+            }
+
+            .notification-close {
+                color: #AAAAAA;
+            }
+
+            .notification-close:hover {
+                background: rgba(255, 255, 255, 0.1);
+                color: #FFFFFF;
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .page-title {
+                padding: 15px 10px 5px;
+            }
+            
+            .notifications-container {
+                padding: 0 10px;
+            }
+            
+            .notification-item {
+                padding: 12px;
+                gap: 10px;
+            }
+            
+            .notification-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 5px;
+            }
+            
+            .notification-time {
+                align-self: flex-start;
+            }
+            
+            .notification-system {
+                right: 10px;
+                left: 10px;
+                max-width: none;
+            }
+        }
+
+        @media (max-width: 375px) {
+            .app-container {
+                padding: 0 8px 80px;
+            }
+            
+            .app-header {
+                padding: 12px 8px 8px;
+            }
+            
+            .logo-icon {
+                width: 32px;
+                height: 32px;
+                font-size: 16px;
+            }
+            
+            .logo-text {
+                font-size: 1.2rem;
+            }
+            
+            .icon-btn {
+                width: 32px;
+                height: 32px;
+                font-size: 14px;
+            }
+            
+            .page-title {
+                padding: 15px 8px 5px;
+            }
+            
+            .page-title h1 {
+                font-size: 1.3rem;
+            }
+            
+            .action-btn {
+                padding: 6px 10px;
+                font-size: 11px;
+            }
+            
+            .notifications-container {
+                padding: 0 8px;
+            }
+            
+            .notification-item {
+                padding: 10px;
+                gap: 8px;
+            }
+            
+            .notification-icon {
+                width: 36px;
+                height: 36px;
+                font-size: 14px;
+            }
+            
+            .notification-title {
+                font-size: 13px;
+            }
+            
+            .notification-message {
+                font-size: 12px;
+            }
+            
+            .notification-time {
+                font-size: 10px;
+            }
+            
+            .bottom-nav {
+                padding: 10px 0 8px;
+            }
+            
+            .nav-item {
+                font-size: 9px;
+                gap: 3px;
+            }
+            
+            .nav-icon {
+                font-size: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Système de notifications -->
+    <div class="notification-system" id="notificationSystem"></div>
+
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo" onclick="window.location.href='profil.html'">
+                <div class="logo-icon">
+                    <i class="fas fa-arrow-left"></i>
+                </div>
+                <div class="logo-text">Retour</div>
+            </div>
+            <div class="header-actions">
+                <div class="icon-btn" id="refreshNotificationsBtn" title="Rafraîchir">
+                    <i class="fas fa-sync-alt"></i>
+                </div>
+                <div class="icon-btn" id="markAllReadBtn" title="Tout marquer comme lu">
+                    <i class="fas fa-check-double"></i>
+                    <div class="badge" id="unreadCountBadge" style="display: none;">0</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Page Title -->
+        <div class="page-title">
+            <h1 id="pageTitle">Notifications</h1>
+            <div class="page-actions">
+                <button class="action-btn" id="filterAllBtn">
+                    <i class="fas fa-filter"></i> Toutes
+                </button>
+            </div>
+        </div>
+
+        <!-- Notifications Container -->
+        <div class="notifications-container" id="notificationsContainer">
+            <!-- Les notifications seront chargées ici dynamiquement -->
+            <div class="loading">
+                <div class="loading-spinner"></div>
+                <p>Chargement des notifications...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+        <div class="nav-item" onclick="window.location.href='accueil.html'">
+            <i class="fas fa-home nav-icon"></i>
+            <span>Accueil</span>
+        </div>
+        <div class="nav-item" onclick="window.location.href='jeux.html'">
+            <i class="fas fa-gamepad nav-icon"></i>
+            <span>Mes Jeux</span>
+        </div>
+        <div class="nav-item" onclick="window.location.href='promotions.html'">
+            <i class="fas fa-gift nav-icon"></i>
+            <span>Promos</span>
+        </div>
+        <div class="nav-item" onclick="window.location.href='profil.html'">
+            <i class="fas fa-user nav-icon"></i>
+            <span>Profil</span>
+        </div>
+    </nav>
+
+    <script>
+        // Fonction pour afficher des notifications élégantes
+        function showNotification(title, message, type = 'info', duration = 4000) {
+            const notificationSystem = document.getElementById('notificationSystem');
+            if (!notificationSystem) return;
+            
+            const notificationId = 'notification-' + Date.now();
+            
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.id = notificationId;
+            
+            const icons = {
+                success: 'fas fa-check-circle',
+                warning: 'fas fa-exclamation-triangle',
+                error: 'fas fa-times-circle',
+                info: 'fas fa-info-circle'
+            };
+            
+            notification.innerHTML = `
+                <div class="notification-icon">
+                    <i class="${icons[type]}"></i>
+                </div>
+                <div class="notification-content">
+                    <div class="notification-title">${title}</div>
+                    <div class="notification-message">${message}</div>
+                </div>
+                <button class="notification-close" onclick="closeNotification('${notificationId}')">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            
+            notificationSystem.appendChild(notification);
+            
+            // Animation d'entrée
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 10);
+            
+            // Fermeture automatique
+            if (duration > 0) {
+                setTimeout(() => {
+                    closeNotification(notificationId);
+                }, duration);
+            }
+            
+            return notificationId;
+        }
+
+        // Fonction pour fermer une notification
+        function closeNotification(notificationId) {
+            const notification = document.getElementById(notificationId);
+            if (notification) {
+                notification.classList.remove('show');
+                notification.classList.add('hide');
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 400);
+            }
+        }
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log("🚀 Page de notifications initialisée");
+            
+            // Bouton de rafraîchissement
+            const refreshBtn = document.getElementById('refreshNotificationsBtn');
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', function() {
+                    console.log("🔄 Bouton rafraîchir cliqué");
+                    refreshBtn.style.animation = 'spin 1s linear';
+                    setTimeout(() => {
+                        refreshBtn.style.animation = '';
+                    }, 1000);
+                    
+                    window.refreshNotifications();
+                });
+            }
+
+            // Bouton "Tout marquer comme lu"
+            const markAllReadBtn = document.getElementById('markAllReadBtn');
+            if (markAllReadBtn) {
+                markAllReadBtn.addEventListener('click', async function() {
+                    console.log("📝 Bouton 'Tout marquer comme lu' cliqué");
+                    
+                    if (!window.auth) {
+                        console.error("❌ Auth non disponible");
+                        return;
+                    }
+                    
+                    const user = window.auth.currentUser;
+                    if (!user) {
+                        console.error("❌ Utilisateur non connecté");
+                        showNotification(
+                            'Erreur',
+                            'Vous devez être connecté pour cette action.',
+                            'error',
+                            3000
+                        );
+                        return;
+                    }
+                    
+                    const success = await window.markAllAsRead(user.uid);
+                    if (success) {
+                        showNotification(
+                            'Toutes marquées comme lues',
+                            'Vos notifications ont été marquées comme lues.',
+                            'success',
+                            3000
+                        );
+                        
+                        // Signaler au profil que les notifications ont été mises à jour
+                        window.localStorage.setItem('notificationsUpdated', Date.now().toString());
+                        
+                        // Recharger les notifications
+                        setTimeout(() => {
+                            window.refreshNotifications();
+                        }, 500);
+                    } else {
+                        showNotification(
+                            'Erreur',
+                            'Impossible de marquer toutes les notifications comme lues.',
+                            'error',
+                            3000
+                        );
+                    }
+                });
+            }
+
+            // Bouton "Toutes"
+            const filterAllBtn = document.getElementById('filterAllBtn');
+            if (filterAllBtn) {
+                filterAllBtn.addEventListener('click', function() {
+                    console.log("🔘 Filtre 'Toutes' cliqué");
+                    window.refreshNotifications();
+                });
+            }
+
+            // Signaler que l'utilisateur a visité les notifications
+            window.localStorage.setItem('lastNotificationVisit', Date.now().toString());
+
+            // Forcer le chargement initial
+            setTimeout(() => {
+                if (window.auth && window.auth.currentUser) {
+                    console.log("⚡ Forcer le chargement pour l'utilisateur connecté");
+                    window.refreshNotifications();
+                }
+            }, 1500);
+        });
+    </script>
+</body>
+</html>

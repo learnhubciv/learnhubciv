@@ -1,0 +1,1531 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Historique des Retraits - GameHub</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Import Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+        import { 
+            getAuth,
+            onAuthStateChanged
+        } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
+        import { 
+            getFirestore,
+            collection,
+            query,
+            where,
+            getDocs,
+            orderBy,
+            onSnapshot
+        } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+        
+        // Configuration Firebase (identique à profil.html)
+        const firebaseConfig = {
+            apiKey: "AIzaSyDhySV3lXOlCQ8fMIYRlzs0YpMg6MZ_Ixo",
+            authDomain: "gamehub-e45ea.firebaseapp.com",
+            projectId: "gamehub-e45ea",
+            storageBucket: "gamehub-e45ea.firebasestorage.app",
+            messagingSenderId: "609288909968",
+            appId: "1:609288909968:web:45f3716ce6b2d4970d1415"
+        };
+
+        // Initialiser Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        
+        // Variable pour stocker l'utilisateur actuel
+        let currentUser = null;
+        
+        // Variable pour stocker l'écouteur en temps réel
+        let withdrawalListener = null;
+        
+        // Fonction pour formater la date
+        window.formatDate = function(dateString) {
+            if (!dateString) return 'Non spécifié';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('fr-FR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        };
+        
+        // Fonction pour obtenir le nom de la méthode de retrait
+        window.getMethodName = function(methodCode) {
+            const methods = {
+                'orange_money': 'Orange Money',
+                'mtn_money': 'MTN Money',
+                'wave': 'Wave',
+                'moov_money': 'Moov Money'
+            };
+            return methods[methodCode] || methodCode;
+        };
+        
+        // Fonction pour obtenir la classe CSS du statut
+        window.getStatusClass = function(status) {
+            switch(status) {
+                case 'pending': return 'status-pending';
+                case 'completed': return 'status-completed';
+                case 'rejected': return 'status-rejected';
+                default: return 'status-unknown';
+            }
+        };
+        
+        // Fonction pour obtenir le texte du statut
+        window.getStatusText = function(status) {
+            switch(status) {
+                case 'pending': return 'En cours';
+                case 'completed': return 'Payé';
+                case 'rejected': return 'Remboursé';
+                default: return 'Inconnu';
+            }
+        };
+        
+        // Fonction pour récupérer l'historique des retraits
+        window.loadWithdrawalHistory = async function(userId) {
+            try {
+                console.log("Chargement de l'historique pour l'utilisateur:", userId);
+                const withdrawalsRef = collection(db, 'withdrawals');
+                
+                // Utiliser seulement le filtre userId sans orderBy pour éviter l'erreur d'index
+                const q = query(
+                    withdrawalsRef, 
+                    where('userId', '==', userId)
+                );
+                
+                const querySnapshot = await getDocs(q);
+                console.log("Nombre de retraits trouvés:", querySnapshot.size);
+                
+                const withdrawals = [];
+                querySnapshot.forEach(doc => {
+                    const data = doc.data();
+                    console.log("Données du retrait:", data);
+                    withdrawals.push({
+                        id: doc.id,
+                        ...data,
+                        formattedDate: window.formatDate(data.requestDate),
+                        methodName: window.getMethodName(data.method),
+                        statusClass: window.getStatusClass(data.status),
+                        statusText: window.getStatusText(data.status)
+                    });
+                });
+                
+                // Trier manuellement par date décroissante (plus récent en premier)
+                withdrawals.sort((a, b) => {
+                    return new Date(b.requestDate) - new Date(a.requestDate);
+                });
+                
+                return withdrawals;
+            } catch (error) {
+                console.error('Erreur lors du chargement de l\'historique:', error);
+                
+                // Afficher un message d'erreur spécifique pour l'index manquant
+                if (error.message.includes('index') || error.message.includes('composite')) {
+                    window.showNotification(
+                        'Configuration requise', 
+                        'L\'index Firestore doit être créé. Cliquez sur le lien dans la console pour le créer.', 
+                        'warning', 
+                        6000
+                    );
+                    
+                    // Pour le débogage, essayer une requête plus simple
+                    return window.loadSimpleHistory(userId);
+                }
+                
+                window.showNotification('Erreur', 'Impossible de charger l\'historique: ' + error.message, 'error', 5000);
+                return [];
+            }
+        };
+        
+        // Fonction de secours pour charger l'historique sans tri
+        window.loadSimpleHistory = async function(userId) {
+            try {
+                console.log("Tentative de chargement simple...");
+                const withdrawalsRef = collection(db, 'withdrawals');
+                const querySnapshot = await getDocs(withdrawalsRef);
+                
+                const withdrawals = [];
+                querySnapshot.forEach(doc => {
+                    const data = doc.data();
+                    // Filtrer manuellement par userId
+                    if (data.userId === userId) {
+                        withdrawals.push({
+                            id: doc.id,
+                            ...data,
+                            formattedDate: window.formatDate(data.requestDate),
+                            methodName: window.getMethodName(data.method),
+                            statusClass: window.getStatusClass(data.status),
+                            statusText: window.getStatusText(data.status)
+                        });
+                    }
+                });
+                
+                // Trier manuellement
+                withdrawals.sort((a, b) => {
+                    return new Date(b.requestDate) - new Date(a.requestDate);
+                });
+                
+                console.log("Retraits filtrés manuellement:", withdrawals.length);
+                return withdrawals;
+                
+            } catch (error) {
+                console.error("Erreur dans loadSimpleHistory:", error);
+                return [];
+            }
+        };
+        
+        // Fonction pour mettre à jour l'affichage de l'historique
+        window.updateWithdrawalHistory = async function(userId) {
+            console.log("Mise à jour de l'historique pour:", userId);
+            const loadingElement = document.getElementById('loading');
+            const historyList = document.getElementById('withdrawalHistory');
+            const emptyState = document.getElementById('emptyState');
+            const tabs = document.querySelectorAll('.tab');
+            const activeTab = document.querySelector('.tab.active')?.getAttribute('data-filter') || 'all';
+            
+            // Afficher le chargement
+            if (loadingElement) loadingElement.style.display = 'flex';
+            if (historyList) historyList.innerHTML = '';
+            
+            try {
+                const withdrawals = await window.loadWithdrawalHistory(userId);
+                
+                // Mettre à jour les compteurs
+                window.updateCounters(withdrawals);
+                
+                // Filtrer les retraits selon l'onglet actif
+                let filteredWithdrawals = withdrawals;
+                if (activeTab !== 'all') {
+                    filteredWithdrawals = withdrawals.filter(w => w.status === activeTab);
+                }
+                
+                // Afficher l'état vide si nécessaire
+                if (filteredWithdrawals.length === 0) {
+                    if (emptyState) emptyState.style.display = 'block';
+                    if (historyList) historyList.innerHTML = '';
+                } else {
+                    if (emptyState) emptyState.style.display = 'none';
+                    // Afficher la liste
+                    window.displayWithdrawals(filteredWithdrawals);
+                }
+                
+            } catch (error) {
+                console.error('Erreur:', error);
+                window.showNotification('Erreur', 'Impossible de charger l\'historique', 'error', 4000);
+            } finally {
+                if (loadingElement) loadingElement.style.display = 'none';
+            }
+        };
+        
+        // Fonction pour afficher les retraits
+        window.displayWithdrawals = function(withdrawals) {
+            console.log("Affichage de", withdrawals.length, "retraits");
+            const historyList = document.getElementById('withdrawalHistory');
+            if (!historyList) return;
+            
+            historyList.innerHTML = '';
+            
+            if (withdrawals.length === 0) {
+                return;
+            }
+            
+            withdrawals.forEach(withdrawal => {
+                const withdrawalItem = document.createElement('div');
+                withdrawalItem.className = 'withdrawal-item';
+                withdrawalItem.innerHTML = `
+                    <div class="withdrawal-header">
+                        <div class="withdrawal-method">
+                            <i class="fas ${window.getMethodIcon(withdrawal.method)}"></i>
+                            <span>${withdrawal.methodName}</span>
+                        </div>
+                        <div class="withdrawal-status ${withdrawal.statusClass}">
+                            <i class="fas ${window.getStatusIcon(withdrawal.status)}"></i>
+                            <span>${withdrawal.statusText}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="withdrawal-details">
+                        <div class="detail-row">
+                            <span class="detail-label">Date de demande:</span>
+                            <span class="detail-value">${withdrawal.formattedDate}</span>
+                        </div>
+                        
+                        <div class="detail-row">
+                            <span class="detail-label">Montant demandé:</span>
+                            <span class="detail-value amount">${(withdrawal.netAmount || 0).toLocaleString()}Fr</span>
+                        </div>
+                        
+                        <div class="detail-row">
+                            <span class="detail-label">Frais appliqués:</span>
+                            <span class="detail-value fee">${(withdrawal.fee || 0).toLocaleString()}Fr</span>
+                        </div>
+                        
+                        <div class="detail-row">
+                            <span class="detail-label">Total débité:</span>
+                            <span class="detail-value total">${(withdrawal.totalAmount || (withdrawal.netAmount || 0) + (withdrawal.fee || 0)).toLocaleString()}Fr</span>
+                        </div>
+                        
+                        <div class="detail-row">
+                            <span class="detail-label">Numéro:</span>
+                            <span class="detail-value phone">${withdrawal.phoneNumber || 'Non spécifié'}</span>
+                        </div>
+                        
+                        ${withdrawal.processedDate ? `
+                        <div class="detail-row">
+                            <span class="detail-label">Date de traitement:</span>
+                            <span class="detail-value">${window.formatDate(withdrawal.processedDate)}</span>
+                        </div>
+                        ` : ''}
+                        
+                        ${withdrawal.status === 'rejected' && withdrawal.balanceRestored ? `
+                        <div class="detail-row">
+                            <span class="detail-label">Montant remboursé:</span>
+                            <span class="detail-value restored">${(withdrawal.restoredAmount || withdrawal.totalAmount || 0).toLocaleString()}Fr</span>
+                        </div>
+                        ` : ''}
+                        
+                        ${withdrawal.status === 'rejected' && withdrawal.restoredAt ? `
+                        <div class="detail-row">
+                            <span class="detail-label">Date de remboursement:</span>
+                            <span class="detail-value">${window.formatDate(withdrawal.restoredAt)}</span>
+                        </div>
+                        ` : ''}
+                    </div>
+                    
+                    ${withdrawal.status === 'pending' ? `
+                    <div class="withdrawal-note">
+                        <i class="fas fa-clock"></i>
+                        Votre retrait est en cours de traitement. Il sera traité sous 24-48h.
+                    </div>
+                    ` : ''}
+                    
+                    ${withdrawal.status === 'completed' ? `
+                    <div class="withdrawal-note success">
+                        <i class="fas fa-check-circle"></i>
+                        Votre retrait a été traité avec succès. Le montant a été envoyé sur votre compte ${withdrawal.methodName}.
+                    </div>
+                    ` : ''}
+                    
+                    ${withdrawal.status === 'rejected' ? `
+                    <div class="withdrawal-note warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Votre retrait a été rejeté. Le montant total (montant + frais) a été restauré à votre solde.
+                    </div>
+                    ` : ''}
+                `;
+                
+                historyList.appendChild(withdrawalItem);
+            });
+        };
+        
+        // Fonction pour obtenir l'icône de la méthode
+        window.getMethodIcon = function(method) {
+            const icons = {
+                'orange_money': 'fa-mobile-alt orange',
+                'mtn_money': 'fa-sim-card mtn',
+                'wave': 'fa-wave-square wave',
+                'moov_money': 'fa-bolt moov'
+            };
+            return icons[method] || 'fa-money-bill-wave';
+        };
+        
+        // Fonction pour obtenir l'icône du statut
+        window.getStatusIcon = function(status) {
+            switch(status) {
+                case 'pending': return 'fa-clock';
+                case 'completed': return 'fa-check-circle';
+                case 'rejected': return 'fa-times-circle';
+                default: return 'fa-question-circle';
+            }
+        };
+        
+        // Fonction pour mettre à jour les compteurs
+        window.updateCounters = function(withdrawals) {
+            const totalCount = document.getElementById('totalCount');
+            const pendingCount = document.getElementById('pendingCount');
+            const completedCount = document.getElementById('completedCount');
+            const rejectedCount = document.getElementById('rejectedCount');
+            
+            if (!totalCount || !pendingCount || !completedCount || !rejectedCount) return;
+            
+            const pending = withdrawals.filter(w => w.status === 'pending').length;
+            const completed = withdrawals.filter(w => w.status === 'completed').length;
+            const rejected = withdrawals.filter(w => w.status === 'rejected').length;
+            
+            totalCount.textContent = withdrawals.length;
+            pendingCount.textContent = pending;
+            completedCount.textContent = completed;
+            rejectedCount.textContent = rejected;
+        };
+        
+        // Fonction pour configurer l'écoute en temps réel
+        function setupRealtimeListener(userId) {
+            console.log("Configuration de l'écoute en temps réel pour:", userId);
+            try {
+                const withdrawalsRef = collection(db, 'withdrawals');
+                
+                // Utiliser seulement le filtre sans orderBy
+                const q = query(
+                    withdrawalsRef, 
+                    where('userId', '==', userId)
+                );
+                
+                // Écouter les changements en temps réel
+                withdrawalListener = onSnapshot(q, (snapshot) => {
+                    console.log("Changement détecté dans les retraits. Mise à jour...");
+                    
+                    // Mettre à jour l'historique
+                    window.updateWithdrawalHistory(userId);
+                    
+                }, (error) => {
+                    console.error("Erreur dans l'écouteur en temps réel:", error);
+                    
+                    // Si c'est une erreur d'index, utiliser un écouteur plus simple
+                    if (error.message.includes('index') || error.message.includes('composite')) {
+                        console.log("Chargement sans écoute en temps réel (index manquant)");
+                        window.showNotification('Info', 'L\'historique se mettra à jour après rechargement de la page', 'info', 3000);
+                    } else {
+                        window.showNotification('Erreur', 'Connexion en temps réel perdue. Rechargement...', 'warning', 3000);
+                        
+                        // Réessayer après un délai
+                        setTimeout(() => {
+                            if (currentUser) {
+                                setupRealtimeListener(currentUser.uid);
+                            }
+                        }, 5000);
+                    }
+                });
+                
+            } catch (error) {
+                console.error('Erreur lors de l\'écoute en temps réel:', error);
+                window.showNotification('Erreur', 'Impossible de configurer l\'écoute en temps réel', 'error', 4000);
+            }
+        }
+        
+        // Fonction pour afficher des notifications
+        window.showNotification = function(title, message, type = 'info', duration = 4000) {
+            const notificationSystem = document.getElementById('notificationSystem');
+            if (!notificationSystem) return;
+            
+            const notificationId = 'notification-' + Date.now();
+            
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.id = notificationId;
+            
+            const icons = {
+                success: 'fas fa-check-circle',
+                warning: 'fas fa-exclamation-triangle',
+                error: 'fas fa-times-circle',
+                info: 'fas fa-info-circle'
+            };
+            
+            notification.innerHTML = `
+                <div class="notification-icon">
+                    <i class="${icons[type]}"></i>
+                </div>
+                <div class="notification-content">
+                    <div class="notification-title">${title}</div>
+                    <div class="notification-message">${message}</div>
+                </div>
+                <button class="notification-close" onclick="window.closeNotification('${notificationId}')">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            
+            notificationSystem.appendChild(notification);
+            
+            // Animation d'entrée
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 10);
+            
+            // Fermeture automatique
+            if (duration > 0) {
+                setTimeout(() => {
+                    window.closeNotification(notificationId);
+                }, duration);
+            }
+            
+            return notificationId;
+        };
+        
+        // Fonction pour fermer une notification
+        window.closeNotification = function(notificationId) {
+            const notification = document.getElementById(notificationId);
+            if (notification) {
+                notification.classList.remove('show');
+                notification.classList.add('hide');
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 400);
+            }
+        };
+        
+        // Fonction pour filtrer les retraits (EXPOSÉE AU NIVEAU GLOBAL)
+        window.filterWithdrawals = async function(filter) {
+            console.log("Filtrage avec:", filter);
+            const loadingElement = document.getElementById('loading');
+            const historyList = document.getElementById('withdrawalHistory');
+            const emptyState = document.getElementById('emptyState');
+            
+            if (loadingElement) loadingElement.style.display = 'flex';
+            if (historyList) historyList.innerHTML = '';
+            
+            try {
+                // Vérifier si l'utilisateur est connecté
+                if (!currentUser) {
+                    console.error("Utilisateur non connecté");
+                    window.showNotification('Erreur', 'Vous devez être connecté pour voir l\'historique', 'error', 3000);
+                    setTimeout(() => {
+                        window.location.href = 'login.html';
+                    }, 2000);
+                    return;
+                }
+                
+                // Récupérer tous les retraits de l'utilisateur
+                const withdrawals = await window.loadWithdrawalHistory(currentUser.uid);
+                
+                let filteredWithdrawals = withdrawals;
+                if (filter !== 'all') {
+                    filteredWithdrawals = withdrawals.filter(w => w.status === filter);
+                }
+                
+                // Afficher l'état vide si nécessaire
+                if (filteredWithdrawals.length === 0) {
+                    if (emptyState) emptyState.style.display = 'block';
+                    if (historyList) historyList.innerHTML = '';
+                } else {
+                    if (emptyState) emptyState.style.display = 'none';
+                    // Afficher la liste filtrée
+                    window.displayWithdrawals(filteredWithdrawals);
+                }
+                
+            } catch (error) {
+                console.error('Erreur lors du filtrage:', error);
+                window.showNotification('Erreur', 'Impossible de filtrer les retraits', 'error', 4000);
+            } finally {
+                if (loadingElement) loadingElement.style.display = 'none';
+            }
+        };
+        
+        // Exposer la fonction pour le rafraîchissement manuel
+        window.refreshHistory = async function() {
+            if (currentUser) {
+                await window.updateWithdrawalHistory(currentUser.uid);
+                window.showNotification(
+                    'Actualisation',
+                    'L\'historique a été rafraîchi',
+                    'success',
+                    2000
+                );
+            }
+        };
+        
+        // Exposer l'utilisateur actuel
+        window.getCurrentUser = function() {
+            return currentUser;
+        };
+        
+        // Écouter les changements d'authentification
+        onAuthStateChanged(auth, async (user) => {
+            console.log("État d'authentification changé:", user);
+            currentUser = user; // Stocker l'utilisateur actuel
+            
+            if (user) {
+                // Vérifier si l'email est vérifié
+                if (!user.emailVerified) {
+                    window.showNotification('Email non vérifié', 'Veuillez vérifier votre email avant d\'accéder à l\'historique.', 'warning', 3000);
+                    setTimeout(() => {
+                        window.location.href = 'login.html';
+                    }, 3000);
+                    return;
+                }
+                
+                // Charger l'historique initial
+                await window.updateWithdrawalHistory(user.uid);
+                
+                // Écouter les changements en temps réel
+                setupRealtimeListener(user.uid);
+            } else {
+                // Arrêter l'écoute si déconnecté
+                if (withdrawalListener) {
+                    withdrawalListener();
+                    withdrawalListener = null;
+                }
+                
+                // Rediriger vers la page de connexion si non connecté
+                window.location.href = 'login.html';
+            }
+        });
+        
+    </script>
+    <style>
+        /* Styles inchangés (identique à la version précédente) */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #8A2BE2;
+            --primary-dark: #6A1BB2;
+            --secondary: #FF6B6B;
+            --accent: #00D4FF;
+            --dark: #1A1A2E;
+            --light: #F8F9FA;
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --text: #333333;
+            --text-light: #6C757D;
+            --success: #28A745;
+            --warning: #FFC107;
+            --pending: #FF9800;
+            --shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            --radius: 12px;
+            --transition: all 0.3s ease;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #1A1A2E 0%, #16213E 50%, #0F3460 100%);
+            color: var(--light);
+            min-height: 100vh;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .app-container {
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 0 0 80px;
+        }
+
+        /* Header */
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 15px 10px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(26, 26, 46, 0.9);
+            backdrop-filter: blur(10px);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .logo-text {
+            font-size: 1.3rem;
+            font-weight: 700;
+            background: linear-gradient(to right, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .icon-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: var(--light);
+            transition: var(--transition);
+            cursor: pointer;
+        }
+
+        .icon-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        /* Page Header */
+        .page-header {
+            padding: 20px 15px 10px;
+            text-align: center;
+        }
+
+        .page-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+            color: var(--light);
+        }
+
+        .page-subtitle {
+            font-size: 14px;
+            color: var(--text-light);
+            margin-bottom: 15px;
+        }
+
+        /* Stats Overview */
+        .stats-overview {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin: 0 15px 15px;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 15px;
+            text-align: center;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-light);
+            font-weight: 600;
+        }
+
+        .stat-card.total .stat-value {
+            color: var(--primary);
+        }
+
+        .stat-card.pending .stat-value {
+            color: var(--pending);
+        }
+
+        .stat-card.completed .stat-value {
+            color: var(--success);
+        }
+
+        .stat-card.rejected .stat-value {
+            color: var(--secondary);
+        }
+
+        /* Tabs Navigation */
+        .tabs-container {
+            margin: 0 15px 15px;
+        }
+
+        .tabs {
+            display: flex;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius);
+            padding: 4px;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+
+        .tabs::-webkit-scrollbar {
+            display: none;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 10px 12px;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-light);
+            cursor: pointer;
+            transition: var(--transition);
+            white-space: nowrap;
+            border-radius: 8px;
+        }
+
+        .tab.active {
+            background: var(--card-bg);
+            color: var(--primary);
+            box-shadow: var(--shadow);
+        }
+
+        .tab i {
+            margin-right: 5px;
+            font-size: 12px;
+        }
+
+        /* History List */
+        .history-container {
+            margin: 0 15px;
+        }
+
+        .history-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--light);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .history-title span {
+            font-size: 12px;
+            color: var(--text-light);
+            font-weight: normal;
+        }
+
+        .withdrawal-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .withdrawal-item {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 15px;
+            box-shadow: var(--shadow);
+            border-left: 4px solid var(--primary);
+            animation: fadeInUp 0.5s ease;
+        }
+
+        .withdrawal-item.status-pending {
+            border-left-color: var(--pending);
+        }
+
+        .withdrawal-item.status-completed {
+            border-left-color: var(--success);
+        }
+
+        .withdrawal-item.status-rejected {
+            border-left-color: var(--secondary);
+        }
+
+        .withdrawal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .withdrawal-method {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .withdrawal-method i {
+            color: var(--primary);
+            font-size: 16px;
+        }
+
+        .withdrawal-method i.orange {
+            color: #FF6600;
+        }
+
+        .withdrawal-method i.mtn {
+            color: #FFCC00;
+        }
+
+        .withdrawal-method i.wave {
+            color: #1E88E5;
+        }
+
+        .withdrawal-method i.moov {
+            color: #FF0000;
+        }
+
+        .withdrawal-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-pending {
+            background: rgba(255, 152, 0, 0.15);
+            color: var(--pending);
+        }
+
+        .status-completed {
+            background: rgba(40, 167, 69, 0.15);
+            color: var(--success);
+        }
+
+        .status-rejected {
+            background: rgba(255, 107, 107, 0.15);
+            color: var(--secondary);
+        }
+
+        .withdrawal-status i {
+            font-size: 10px;
+        }
+
+        .withdrawal-details {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+        }
+
+        .detail-label {
+            color: var(--text-light);
+            font-weight: 500;
+        }
+
+        .detail-value {
+            color: var(--text);
+            font-weight: 600;
+            text-align: right;
+            max-width: 60%;
+            word-break: break-word;
+        }
+
+        .detail-value.amount {
+            color: var(--success);
+        }
+
+        .detail-value.fee {
+            color: var(--secondary);
+        }
+
+        .detail-value.total {
+            color: var(--primary);
+            font-size: 14px;
+        }
+
+        .detail-value.restored {
+            color: var(--warning);
+        }
+
+        .withdrawal-note {
+            background: rgba(0, 212, 255, 0.1);
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 12px;
+            color: var(--accent);
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            border-left: 3px solid var(--accent);
+        }
+
+        .withdrawal-note i {
+            font-size: 14px;
+            margin-top: 1px;
+        }
+
+        .withdrawal-note.success {
+            background: rgba(40, 167, 69, 0.1);
+            color: var(--success);
+            border-left-color: var(--success);
+        }
+
+        .withdrawal-note.warning {
+            background: rgba(255, 193, 7, 0.1);
+            color: var(--warning);
+            border-left-color: var(--warning);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            display: none;
+        }
+
+        .empty-icon {
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 30px;
+            color: var(--text-light);
+        }
+
+        .empty-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--light);
+            margin-bottom: 10px;
+        }
+
+        .empty-text {
+            color: var(--text-light);
+            font-size: 14px;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        .empty-action {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            padding: 10px 20px;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: var(--transition);
+            box-shadow: 0 4px 15px rgba(138, 43, 226, 0.3);
+        }
+
+        .empty-action:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(138, 43, 226, 0.4);
+        }
+
+        /* Loading State */
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            display: none;
+        }
+
+        .loading-spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+
+        .loading-text {
+            color: var(--text-light);
+            font-size: 14px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(26, 26, 46, 0.95);
+            backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: space-around;
+            padding: 12px 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 100;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: var(--text-light);
+            font-size: 11px;
+            transition: var(--transition);
+            cursor: pointer;
+        }
+
+        .nav-item.active {
+            color: var(--accent);
+        }
+
+        .nav-icon {
+            font-size: 18px;
+        }
+
+        /* Système de notifications */
+        .notification-system {
+            position: fixed;
+            top: 80px;
+            right: 15px;
+            z-index: 2000;
+            max-width: 320px;
+        }
+
+        .notification {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 15px;
+            margin-bottom: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            border-left: 4px solid var(--primary);
+            transform: translateX(400px);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        .notification.hide {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+
+        .notification.success {
+            border-left-color: var(--success);
+        }
+
+        .notification.warning {
+            border-left-color: var(--warning);
+        }
+
+        .notification.error {
+            border-left-color: var(--secondary);
+        }
+
+        .notification.info {
+            border-left-color: var(--accent);
+        }
+
+        .notification-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .notification.success .notification-icon {
+            background: rgba(40, 167, 69, 0.15);
+            color: var(--success);
+        }
+
+        .notification.warning .notification-icon {
+            background: rgba(255, 193, 7, 0.15);
+            color: var(--warning);
+        }
+
+        .notification.error .notification-icon {
+            background: rgba(255, 107, 107, 0.15);
+            color: var(--secondary);
+        }
+
+        .notification.info .notification-icon {
+            background: rgba(0, 212, 255, 0.15);
+            color: var(--accent);
+        }
+
+        .notification-content {
+            flex: 1;
+        }
+
+        .notification-title {
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 4px;
+            font-size: 14px;
+        }
+
+        .notification-message {
+            color: var(--text-light);
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        .notification-close {
+            background: none;
+            border: none;
+            color: var(--text-light);
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: var(--transition);
+            flex-shrink: 0;
+        }
+
+        .notification-close:hover {
+            background: rgba(0, 0, 0, 0.05);
+            color: var(--text);
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Support pour les modes sombre/clair du système */
+        @media (prefers-color-scheme: dark) {
+            .stat-card, .withdrawal-item {
+                background: rgba(30, 30, 46, 0.95);
+            }
+            
+            .withdrawal-method, .detail-value {
+                color: var(--light);
+            }
+            
+            .detail-label {
+                color: rgba(255, 255, 255, 0.6);
+            }
+            
+            .withdrawal-header {
+                border-bottom-color: rgba(255, 255, 255, 0.1);
+            }
+            
+            .tabs {
+                background: rgba(255, 255, 255, 0.05);
+            }
+            
+            .tab.active {
+                background: rgba(138, 43, 226, 0.2);
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .stats-overview {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .stat-value {
+                font-size: 1.5rem;
+            }
+            
+            .tabs {
+                flex-wrap: nowrap;
+                overflow-x: auto;
+            }
+            
+            .tab {
+                min-width: 100px;
+                font-size: 12px;
+                padding: 8px 10px;
+            }
+            
+            .withdrawal-item {
+                padding: 12px;
+            }
+            
+            .detail-row {
+                font-size: 12px;
+            }
+            
+            .withdrawal-note {
+                font-size: 11px;
+            }
+            
+            .notification-system {
+                right: 10px;
+                left: 10px;
+                max-width: none;
+            }
+        }
+
+        @media (max-width: 375px) {
+            .app-container {
+                padding: 0 8px 80px;
+            }
+            
+            .app-header {
+                padding: 12px 8px 8px;
+            }
+            
+            .page-header {
+                padding: 15px 8px 10px;
+            }
+            
+            .stats-overview {
+                margin: 0 8px 12px;
+                gap: 8px;
+            }
+            
+            .stat-card {
+                padding: 12px 8px;
+                border-radius: 10px;
+            }
+            
+            .stat-value {
+                font-size: 1.3rem;
+            }
+            
+            .tabs-container {
+                margin: 0 8px 12px;
+            }
+            
+            .history-container {
+                margin: 0 8px;
+            }
+            
+            .withdrawal-item {
+                padding: 10px;
+            }
+            
+            .detail-row {
+                font-size: 11px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Système de notifications -->
+    <div class="notification-system" id="notificationSystem"></div>
+
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo" onclick="window.location.href='profil.html'">
+                <div class="logo-icon">
+                    <i class="fas fa-arrow-left"></i>
+                </div>
+                <div class="logo-text">Historique</div>
+            </div>
+            <div class="header-actions">
+                <div class="icon-btn" id="refreshBtn" title="Rafraîchir">
+                    <i class="fas fa-sync-alt"></i>
+                </div>
+            </div>
+        </header>
+
+        <!-- Page Header -->
+        <section class="page-header">
+            <h1 class="page-title">Historique des Retraits</h1>
+            <p class="page-subtitle">Suivez l'état de vos demandes de retrait</p>
+        </section>
+
+        <!-- Stats Overview -->
+        <div class="stats-overview">
+            <div class="stat-card total">
+                <div class="stat-value" id="totalCount">0</div>
+                <div class="stat-label">Total</div>
+            </div>
+            <div class="stat-card pending">
+                <div class="stat-value" id="pendingCount">0</div>
+                <div class="stat-label">En cours</div>
+            </div>
+            <div class="stat-card completed">
+                <div class="stat-value" id="completedCount">0</div>
+                <div class="stat-label">Payés</div>
+            </div>
+            <div class="stat-card rejected">
+                <div class="stat-value" id="rejectedCount">0</div>
+                <div class="stat-label">Remboursés</div>
+            </div>
+        </div>
+
+        <!-- Tabs Navigation -->
+        <div class="tabs-container">
+            <div class="tabs">
+                <div class="tab active" data-filter="all">
+                    <i class="fas fa-list"></i> Tous
+                </div>
+                <div class="tab" data-filter="pending">
+                    <i class="fas fa-clock"></i> En cours
+                </div>
+                <div class="tab" data-filter="completed">
+                    <i class="fas fa-check-circle"></i> Payés
+                </div>
+                <div class="tab" data-filter="rejected">
+                    <i class="fas fa-undo-alt"></i> Remboursés
+                </div>
+            </div>
+        </div>
+
+        <!-- History List -->
+        <div class="history-container">
+            <div class="history-title">
+                Dernières transactions
+                <span id="currentFilter">Tous les retraits</span>
+            </div>
+            
+            <!-- Loading State -->
+            <div class="loading" id="loading">
+                <div class="loading-spinner"></div>
+                <div class="loading-text">Chargement de l'historique...</div>
+            </div>
+            
+            <!-- Empty State -->
+            <div class="empty-state" id="emptyState">
+                <div class="empty-icon">
+                    <i class="fas fa-history"></i>
+                </div>
+                <h3 class="empty-title">Aucun retrait trouvé</h3>
+                <p class="empty-text">
+                    Vous n'avez pas encore effectué de demande de retrait.<br>
+                    Retirez vos gains dès que vous atteignez le minimum requis.
+                </p>
+                <a href="profil.html" class="empty-action">
+                    <i class="fas fa-money-bill-wave"></i> Retirer mes gains
+                </a>
+            </div>
+            
+            <!-- Withdrawals List -->
+            <div class="withdrawal-list" id="withdrawalHistory">
+                <!-- Les retraits seront affichés ici dynamiquement -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+        <div class="nav-item" onclick="window.location.href='accueil.html'">
+            <i class="fas fa-home nav-icon"></i>
+            <span>Accueil</span>
+        </div>
+        <div class="nav-item" onclick="window.location.href='jeux.html'">
+            <i class="fas fa-gamepad nav-icon"></i>
+            <span>Mes Jeux</span>
+        </div>
+        <div class="nav-item" onclick="window.location.href='promotions.html'">
+            <i class="fas fa-gift nav-icon"></i>
+            <span>Promos</span>
+        </div>
+        <div class="nav-item" onclick="window.location.href='profil.html'">
+            <i class="fas fa-user nav-icon"></i>
+            <span>Profil</span>
+        </div>
+        <div class="nav-item active">
+            <i class="fas fa-history nav-icon"></i>
+            <span>Historique</span>
+        </div>
+    </nav>
+
+    <script>
+        // Gestion des onglets
+        document.addEventListener('DOMContentLoaded', function() {
+            const tabs = document.querySelectorAll('.tab');
+            const currentFilterElement = document.getElementById('currentFilter');
+            const refreshBtn = document.getElementById('refreshBtn');
+            
+            // Fonction pour mettre à jour le texte du filtre
+            function updateFilterText(filter) {
+                const filterTexts = {
+                    'all': 'Tous les retraits',
+                    'pending': 'Retraits en cours',
+                    'completed': 'Retraits payés',
+                    'rejected': 'Retraits remboursés'
+                };
+                
+                if (currentFilterElement) {
+                    currentFilterElement.textContent = filterTexts[filter] || 'Filtre inconnu';
+                }
+            }
+            
+            // Gérer le clic sur les onglets
+            tabs.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    const filter = this.getAttribute('data-filter');
+                    
+                    // Mettre à jour l'onglet actif
+                    tabs.forEach(t => t.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    // Mettre à jour le texte du filtre
+                    updateFilterText(filter);
+                    
+                    // Appeler la fonction de filtrage globale
+                    if (window.filterWithdrawals) {
+                        window.filterWithdrawals(filter);
+                    } else {
+                        console.error("La fonction filterWithdrawals n'est pas disponible");
+                        window.showNotification('Erreur', 'Fonction de filtrage non disponible', 'error', 3000);
+                    }
+                });
+            });
+            
+            // Bouton de rafraîchissement
+            refreshBtn.addEventListener('click', function() {
+                refreshBtn.style.animation = 'spin 1s linear';
+                setTimeout(() => {
+                    refreshBtn.style.animation = '';
+                }, 1000);
+                
+                // Appeler la fonction de rafraîchissement
+                if (window.refreshHistory) {
+                    window.refreshHistory();
+                } else {
+                    // Si la fonction n'est pas disponible, recharger la page
+                    location.reload();
+                }
+            });
+            
+            // Initialiser le texte du filtre
+            updateFilterText('all');
+            
+            // Animation des sections
+            const sections = document.querySelectorAll('.stats-overview, .tabs-container, .history-container');
+            sections.forEach((section, index) => {
+                section.style.animation = `fadeInUp 0.5s ease forwards ${index * 0.1}s`;
+                section.style.opacity = '0';
+            });
+            
+            // Vérifier que l'utilisateur est connecté
+            setTimeout(() => {
+                if (!window.getCurrentUser || !window.getCurrentUser()) {
+                    console.warn("Utilisateur non connecté détecté");
+                    // Ne pas rediriger immédiatement, laisser la gestion d'authentification Firebase s'en charger
+                }
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

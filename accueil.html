@@ -1,0 +1,3622 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accueil - GameHub</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Import Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+        import { 
+            getAuth, 
+            onAuthStateChanged
+        } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
+        import { 
+            getFirestore,
+            doc,
+            getDoc,
+            collection,
+            query,
+            where,
+            getDocs,
+            addDoc,
+            updateDoc,
+            increment
+        } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+        
+        // Configuration Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyDhySV3lXOlCQ8fMIYRlzs0YpMg6MZ_Ixo",
+            authDomain: "gamehub-e45ea.firebaseapp.com",
+            projectId: "gamehub-e45ea",
+            storageBucket: "gamehub-e45ea.firebasestorage.app",
+            messagingSenderId: "609288909968",
+            appId: "1:609288909968:web:45f3716ce6b2d4970d1415"
+        };
+
+        // Initialiser Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        
+        // Exposer l'auth et db globalement pour les fonctions
+        window.auth = auth;
+        window.db = db;
+        
+        // Fonction pour récupérer les données utilisateur
+        window.getUserData = async function(uid) {
+            try {
+                const userDocRef = doc(db, 'users', uid);
+                const userDoc = await getDoc(userDocRef);
+                
+                if (userDoc.exists()) {
+                    return userDoc.data();
+                } else {
+                    console.log('Aucun document utilisateur trouvé');
+                    return null;
+                }
+            } catch (error) {
+                console.error('Erreur lors de la récupération des données utilisateur:', error);
+                return null;
+            }
+        };
+        
+        // Fonction pour vérifier si l'utilisateur a déjà une licence active pour un jeu
+        window.checkGameLicense = async function(gameId) {
+            try {
+                const user = auth.currentUser;
+                if (!user) return { hasLicense: false };
+                
+                const currentDate = new Date().toISOString();
+                
+                // Vérifier dans la sous-collection user_purchases
+                const userPurchasesRef = collection(db, 'users', user.uid, 'purchases');
+                const q = query(
+                    userPurchasesRef,
+                    where('gameId', '==', gameId),
+                    where('expirationDate', '>=', currentDate),
+                    where('status', '==', 'active')
+                );
+                
+                const querySnapshot = await getDocs(q);
+                
+                if (!querySnapshot.empty) {
+                    const purchase = querySnapshot.docs[0].data();
+                    return {
+                        hasLicense: true,
+                        purchase: purchase,
+                        expirationDate: new Date(purchase.expirationDate)
+                    };
+                }
+                
+                return { hasLicense: false };
+            } catch (error) {
+                console.error('Erreur lors de la vérification de la licence:', error);
+                return { hasLicense: false };
+            }
+        };
+        
+        // Fonction pour enregistrer un achat dans Firestore (AMÉLIORÉE avec expiration)
+        window.registerPurchase = async function(gameId, gameName, plan, price) {
+            try {
+                const user = auth.currentUser;
+                if (!user) {
+                    showNotification('Erreur', 'Vous devez être connecté pour effectuer un achat', 'error', 4000);
+                    return false;
+                }
+                
+                // Vérifier si l'utilisateur a déjà une licence active
+                const existingLicense = await window.checkGameLicense(gameId);
+                if (existingLicense.hasLicense) {
+                    const expDate = existingLicense.expirationDate;
+                    const daysLeft = Math.ceil((expDate - new Date()) / (1000 * 60 * 60 * 24));
+                    showNotification(
+                        'Licence déjà active',
+                        `Vous avez déjà une licence active pour ce jeu (expire dans ${daysLeft} jours).`,
+                        'warning',
+                        5000
+                    );
+                    return false;
+                }
+                
+                // Récupérer les données utilisateur pour savoir qui est le parrain
+                const userData = await window.getUserData(user.uid);
+                const referredBy = userData?.referredBy || null;
+                
+                // Calculer la date d'expiration en fonction du forfait
+                const purchaseDate = new Date();
+                let expirationDate = new Date();
+                
+                switch(plan) {
+                    case 'trial':
+                        expirationDate = new Date(purchaseDate.getTime() + (1 * 60 * 60 * 1000)); // 1 heure
+                        break;
+                    case 'daily':
+                        expirationDate = new Date(purchaseDate.getTime() + (24 * 60 * 60 * 1000)); // 24 heures
+                        break;
+                    case 'weekly':
+                        expirationDate = new Date(purchaseDate.getTime() + (7 * 24 * 60 * 60 * 1000)); // 7 jours
+                        break;
+                    case 'monthly':
+                        expirationDate = new Date(purchaseDate.getTime() + (30 * 24 * 60 * 60 * 1000)); // 30 jours
+                        break;
+                    default:
+                        expirationDate = new Date(purchaseDate.getTime() + (24 * 60 * 60 * 1000)); // 24h par défaut
+                }
+                
+                // Enregistrer l'achat dans la collection 'purchases'
+                const purchaseDoc = await addDoc(collection(db, 'purchases'), {
+                    userId: user.uid,
+                    userEmail: user.email,
+                    gameId: gameId,
+                    gameName: gameName,
+                    plan: plan,
+                    price: price,
+                    purchaseDate: purchaseDate.toISOString(),
+                    expirationDate: expirationDate.toISOString(),
+                    referredBy: referredBy,
+                    commission: price * 0.3, // 30% de commission
+                    status: 'active'
+                });
+                
+                // Ajouter également dans la sous-collection 'purchases' de l'utilisateur pour un accès plus facile
+                const userPurchasesRef = collection(db, 'users', user.uid, 'purchases');
+                await addDoc(userPurchasesRef, {
+                    gameId: gameId,
+                    gameName: gameName,
+                    plan: plan,
+                    price: price,
+                    purchaseDate: purchaseDate.toISOString(),
+                    expirationDate: expirationDate.toISOString(),
+                    purchaseId: purchaseDoc.id,
+                    status: 'active',
+                    type: gameId in bookmakersData ? 'bookmaker' : 'game'
+                });
+                
+                // Mettre à jour les statistiques de l'utilisateur (commission pour le parrain)
+                if (referredBy) {
+                    // Trouver l'utilisateur qui a parrainé
+                    const referrerQuery = query(collection(db, 'users'), where('referralCode', '==', referredBy));
+                    const referrerSnapshot = await getDocs(referrerQuery);
+                    
+                    if (!referrerSnapshot.empty) {
+                        const referrerDoc = referrerSnapshot.docs[0];
+                        const commission = price * 0.3;
+                        
+                        // Mettre à jour les gains du parrain
+                        await updateDoc(referrerDoc.ref, {
+                            totalEarnings: increment(commission),
+                            availableEarnings: increment(commission)
+                        });
+                        
+                        // Ajouter une notification pour le parrain
+                        await addDoc(collection(db, 'notifications'), {
+                            userId: referrerDoc.id,
+                            title: 'Nouvelle commission !',
+                            message: `Votre filleul ${user.email} a acheté ${gameName}. Vous avez gagné ${commission}Fr de commission.`,
+                            type: 'success',
+                            read: false,
+                            createdAt: new Date().toISOString()
+                        });
+                    }
+                }
+                
+                console.log('Achat enregistré avec succès');
+                return true;
+                
+            } catch (error) {
+                console.error('Erreur lors de l\'enregistrement de l\'achat:', error);
+                showNotification('Erreur', 'Impossible d\'enregistrer l\'achat', 'error', 4000);
+                return false;
+            }
+        };
+        
+        // Données pour les jeux (utilisées dans l'achat)
+        const gamesData = {
+            'king-thimbles': { name: 'King Thimbles', type: 'game' },
+            'mines': { name: 'Mines', type: 'game' },
+            'luckyjet': { name: 'LuckyJet', type: 'game' },
+            'crime-empire': { name: 'Crime Empire', type: 'game' },
+            'rocket-queen': { name: 'Rocket Queen', type: 'game' },
+            'crash': { name: 'Crash', type: 'game' },
+            'rocket-x': { name: 'Rocket X', type: 'game' },
+            'astronaute': { name: 'Astronaute', type: 'game' },
+            'speed-cash': { name: 'Speed & Cash', type: 'game' },
+            'tropicana': { name: 'Tropicana', type: 'game' }
+        };
+
+        // Données pour les bookmakers
+        const bookmakersData = {
+            '1xbet': { name: '1xbet', type: 'bookmaker' },
+            'betwinner': { name: 'Betwinner', type: 'bookmaker' },
+            'betclic': { name: 'Betclic', type: 'bookmaker' },
+            'betmomo': { name: 'Betmomo', type: 'bookmaker' }
+        };
+        
+        // Fonction pour vérifier et mettre à jour les licences expirées
+        async function checkAndUpdateExpiredLicenses(userId) {
+            try {
+                const currentDate = new Date().toISOString();
+                const userPurchasesRef = collection(db, 'users', userId, 'purchases');
+                const q = query(
+                    userPurchasesRef,
+                    where('expirationDate', '<', currentDate),
+                    where('status', '==', 'active')
+                );
+                
+                const querySnapshot = await getDocs(q);
+                const updatePromises = [];
+                
+                querySnapshot.forEach((doc) => {
+                    updatePromises.push(
+                        updateDoc(doc.ref, {
+                            status: 'expired',
+                            expiredAt: new Date().toISOString()
+                        })
+                    );
+                });
+                
+                await Promise.all(updatePromises);
+                
+                if (updatePromises.length > 0) {
+                    console.log(`${updatePromises.length} licence(s) expirée(s) mise(s) à jour`);
+                }
+            } catch (error) {
+                console.error('Erreur lors de la vérification des licences expirées:', error);
+            }
+        }
+        
+        // Fonction pour vérifier TOUS les jeux achetés depuis Firestore
+        window.checkAllPurchasedGames = async function() {
+            const user = window.auth?.currentUser;
+            if (!user) {
+                console.log('Utilisateur non connecté');
+                return;
+            }
+
+            console.log('Vérification des jeux achetés pour:', user.email);
+            
+            try {
+                // Récupérer tous les achats de l'utilisateur depuis Firestore
+                const userPurchasesRef = collection(db, 'users', user.uid, 'purchases');
+                const q = query(userPurchasesRef, where('status', '==', 'active'));
+                const querySnapshot = await getDocs(q);
+                
+                console.log(`${querySnapshot.size} achat(s) actif(s) trouvé(s)`);
+                
+                // Pour chaque achat, marquer le jeu comme acheté
+                for (const doc of querySnapshot.docs) {
+                    const purchaseData = doc.data();
+                    const gameId = purchaseData.gameId;
+                    const expirationDate = new Date(purchaseData.expirationDate);
+                    
+                    console.log(`Jeu acheté: ${purchaseData.gameName}, Expire: ${expirationDate}`);
+                    
+                    // Marquer le jeu comme acheté dans l'interface
+                    const gameCard = document.querySelector(`[data-game-id="${gameId}"]`);
+                    if (gameCard) {
+                        window.markGameAsPurchased(gameCard, expirationDate);
+                    }
+                }
+                
+                // Vérifier aussi les jeux expirés
+                await checkAndUpdateExpiredLicenses(user.uid);
+                
+            } catch (error) {
+                console.error('Erreur lors de la vérification des jeux achetés:', error);
+            }
+        };
+        
+        // Vérifier l'état d'authentification
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) {
+                // Rediriger vers la page de connexion si non connecté
+                window.location.href = 'login.html';
+            } else {
+                // Vérifier si l'email est vérifié
+                if (!user.emailVerified) {
+                    // Rediriger vers la page de connexion si email non vérifié
+                    showNotification('Email non vérifié', 'Veuillez vérifier votre email avant d\'accéder à l\'application.', 'warning', 3000);
+                    setTimeout(() => {
+                        window.location.href = 'login.html';
+                    }, 3000);
+                    return;
+                }
+                
+                // Mettre à jour l'interface utilisateur
+                updateUserUI(user);
+                
+                // Vérifier et mettre à jour les licences expirées
+                await checkAndUpdateExpiredLicenses(user.uid);
+                
+                // Vérifier TOUS les achats de l'utilisateur
+                await window.checkAllPurchasedGames();
+            }
+        });
+        
+        // Fonction pour mettre à jour l'interface utilisateur
+        async function updateUserUI(user) {
+            // Vous pouvez ajouter ici des mises à jour d'interface si nécessaire
+            console.log('Utilisateur connecté:', user.email);
+            
+            // Mettre à jour les stats rapides
+            await updateQuickStats(user.uid);
+        }
+        
+        // Fonction pour mettre à jour les stats rapides
+        async function updateQuickStats(userId) {
+            try {
+                const userPurchasesRef = collection(db, 'users', userId, 'purchases');
+                const q = query(userPurchasesRef, where('status', '==', 'active'));
+                const querySnapshot = await getDocs(q);
+                
+                // Compter les licences actives
+                const activeLicenses = querySnapshot.size;
+                
+                // Calculer les gains du mois (exemple)
+                const currentMonth = new Date().getMonth();
+                const currentYear = new Date().getFullYear();
+                let monthlyEarnings = 0;
+                
+                querySnapshot.forEach(doc => {
+                    const data = doc.data();
+                    const purchaseDate = new Date(data.purchaseDate);
+                    if (purchaseDate.getMonth() === currentMonth && purchaseDate.getFullYear() === currentYear) {
+                        // Estimation des gains basée sur le prix (exemple)
+                        monthlyEarnings += data.price * 0.5; // 50% de ROI estimé
+                    }
+                });
+                
+                // Trouver la licence qui expire le plus tôt
+                let daysRemaining = 0;
+                if (querySnapshot.size > 0) {
+                    const now = new Date();
+                    let earliestExpiration = null;
+                    
+                    querySnapshot.forEach(doc => {
+                        const data = doc.data();
+                        const expirationDate = new Date(data.expirationDate);
+                        if (!earliestExpiration || expirationDate < earliestExpiration) {
+                            earliestExpiration = expirationDate;
+                        }
+                    });
+                    
+                    if (earliestExpiration) {
+                        const diffTime = earliestExpiration - now;
+                        daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        daysRemaining = Math.max(0, daysRemaining);
+                    }
+                }
+                
+                // Mettre à jour l'interface
+                const statValues = document.querySelectorAll('.stat-value');
+                if (statValues.length >= 3) {
+                    statValues[0].textContent = activeLicenses;
+                    statValues[1].textContent = Math.round(monthlyEarnings) + 'Fr';
+                    statValues[2].textContent = daysRemaining;
+                }
+                
+            } catch (error) {
+                console.error('Erreur lors de la mise à jour des stats:', error);
+            }
+        }
+        
+        // Système de notifications
+        window.showNotification = function(title, message, type = 'info', duration = 4000) {
+            const notificationSystem = document.getElementById('notificationSystem');
+            const notificationId = 'notification-' + Date.now();
+            
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.id = notificationId;
+            
+            const icons = {
+                success: 'fas fa-check-circle',
+                warning: 'fas fa-exclamation-triangle',
+                error: 'fas fa-times-circle',
+                info: 'fas fa-info-circle'
+            };
+            
+            notification.innerHTML = `
+                <div class="notification-icon">
+                    <i class="${icons[type]}"></i>
+                </div>
+                <div class="notification-content">
+                    <div class="notification-title">${title}</div>
+                    <div class="notification-message">${message}</div>
+                </div>
+                <button class="notification-close" onclick="closeNotification('${notificationId}')">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            
+            notificationSystem.appendChild(notification);
+            
+            // Animation d'entrée
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 10);
+            
+            // Fermeture automatique
+            if (duration > 0) {
+                setTimeout(() => {
+                    closeNotification(notificationId);
+                }, duration);
+            }
+            
+            return notificationId;
+        };
+        
+        // Fonction pour fermer une notification
+        window.closeNotification = function(notificationId) {
+            const notification = document.getElementById(notificationId);
+            if (notification) {
+                notification.classList.remove('show');
+                notification.classList.add('hide');
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 400);
+            }
+        };
+    </script>
+    <!-- SDK Paystack -->
+    <script src="https://js.paystack.co/v1/inline.js"></script>
+    <style>
+        /* Styles existants conservés */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #8A2BE2;
+            --primary-dark: #6A1BB2;
+            --secondary: #FF6B6B;
+            --accent: #00D4FF;
+            --dark: #1A1A2E;
+            --light: #F8F9FA;
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --text: #333333;
+            --text-light: #6C757D;
+            --success: #28A745;
+            --warning: #FFC107;
+            --expired: #DC3545;
+            --shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            --radius: 12px;
+            --transition: all 0.3s ease;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #1A1A2E 0%, #16213E 50%, #0F3460 100%);
+            color: var(--light);
+            min-height: 100vh;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .app-container {
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 0 0 80px;
+        }
+
+        /* Header */
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 15px 10px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(26, 26, 46, 0.9);
+            backdrop-filter: blur(10px);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .logo-text {
+            font-size: 1.3rem;
+            font-weight: 700;
+            background: linear-gradient(to right, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .user-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .icon-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: var(--light);
+            transition: var(--transition);
+        }
+
+        .icon-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        /* Welcome Section */
+        .welcome-section {
+            padding: 20px 15px;
+            text-align: center;
+        }
+
+        .welcome-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            background: linear-gradient(to right, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .welcome-subtitle {
+            font-size: 1rem;
+            color: var(--text-light);
+            margin-bottom: 20px;
+        }
+
+        /* Nouvelle Section: Featured Cards - REMPLACE Quick Stats */
+        .featured-cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin: 0 15px 20px;
+        }
+
+        .featured-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius);
+            padding: 15px 10px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+            transition: var(--transition);
+            cursor: pointer;
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .featured-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, 
+                rgba(138, 43, 226, 0.1), 
+                rgba(0, 212, 255, 0.05));
+            z-index: 1;
+            opacity: 0;
+            transition: var(--transition);
+        }
+
+        .featured-card:hover::before {
+            opacity: 1;
+        }
+
+        .featured-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .featured-icon {
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+            z-index: 2;
+            position: relative;
+            height: 50px;
+            width: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: var(--transition);
+        }
+
+        .featured-card:hover .featured-icon {
+            transform: scale(1.1) rotate(5deg);
+        }
+
+        .featured-card:nth-child(1) .featured-icon {
+            background: linear-gradient(135deg, rgba(138, 43, 226, 0.2), rgba(138, 43, 226, 0.4));
+            color: #8A2BE2;
+            box-shadow: 0 5px 15px rgba(138, 43, 226, 0.3);
+        }
+
+        .featured-card:nth-child(2) .featured-icon {
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.2), rgba(0, 212, 255, 0.4));
+            color: #00D4FF;
+            box-shadow: 0 5px 15px rgba(0, 212, 255, 0.3);
+        }
+
+        .featured-card:nth-child(3) .featured-icon {
+            background: linear-gradient(135deg, rgba(255, 107, 107, 0.2), rgba(255, 107, 107, 0.4));
+            color: #FF6B6B;
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.3);
+        }
+
+        .featured-title {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--light);
+            margin-bottom: 5px;
+            z-index: 2;
+            position: relative;
+            transition: var(--transition);
+        }
+
+        .featured-card:hover .featured-title {
+            color: var(--accent);
+        }
+
+        .featured-desc {
+            font-size: 0.8rem;
+            color: var(--text-light);
+            z-index: 2;
+            position: relative;
+            line-height: 1.3;
+            opacity: 0.9;
+        }
+
+        .featured-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: var(--secondary);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 0.6rem;
+            font-weight: 600;
+            z-index: 3;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 6px rgba(255, 107, 107, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(255, 107, 107, 0);
+            }
+        }
+
+        .featured-animation {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        .featured-animation::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(
+                to bottom right,
+                rgba(255, 255, 255, 0) 0%,
+                rgba(255, 255, 255, 0.1) 50%,
+                rgba(255, 255, 255, 0) 100%
+            );
+            transform: rotate(30deg);
+            animation: shine 3s infinite;
+        }
+
+        @keyframes shine {
+            0% {
+                transform: translateX(-100%) translateY(-100%) rotate(30deg);
+            }
+            100% {
+                transform: translateX(100%) translateY(100%) rotate(30deg);
+            }
+        }
+
+        /* Games Grid */
+        .section-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin: 0 15px 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .see-all {
+            font-size: 0.9rem;
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin: 0 15px 20px;
+        }
+
+        .game-card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+            cursor: pointer;
+            position: relative;
+        }
+
+        .game-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .game-image {
+            width: 100%;
+            height: 120px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: white;
+        }
+
+        .game-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .game-info {
+            padding: 12px;
+        }
+
+        .game-title {
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .game-desc {
+            font-size: 11px;
+            color: var(--text-light);
+            margin-bottom: 8px;
+        }
+
+        .game-meta {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            height: 30px;
+            margin-bottom: 8px;
+        }
+
+        .game-rating {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            font-size: 11px;
+            color: var(--text-light);
+        }
+
+        .game-rating i {
+            color: #FFC107;
+        }
+
+        .buy-button {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 12px;
+            width: 100%;
+            margin-top: 8px;
+        }
+
+        .buy-button:hover {
+            background: linear-gradient(135deg, var(--primary-dark), #5a189a);
+            transform: translateY(-2px);
+        }
+
+        /* Badge pour les jeux déjà achetés */
+        .purchased-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: var(--success);
+            color: white;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+            z-index: 2;
+        }
+
+        /* Tutoriel Section - NOUVELLE SECTION */
+        .tutorial-section {
+            margin: 0 15px 20px;
+        }
+
+        .tutorial-banner {
+            background: linear-gradient(135deg, #00D4FF, #0066FF);
+            border-radius: var(--radius);
+            padding: 25px;
+            color: white;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 8px 30px rgba(0, 212, 255, 0.3);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .tutorial-banner:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0, 212, 255, 0.4);
+        }
+
+        .tutorial-banner::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, 
+                rgba(0, 0, 0, 0.1) 0%, 
+                rgba(0, 0, 0, 0.05) 50%,
+                transparent 100%);
+            z-index: 1;
+        }
+
+        .tutorial-content {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .tutorial-icon {
+            width: 70px;
+            height: 70px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            flex-shrink: 0;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        .tutorial-text {
+            flex: 1;
+        }
+
+        .tutorial-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .tutorial-subtitle {
+            font-size: 1rem;
+            margin-bottom: 15px;
+            opacity: 0.9;
+            line-height: 1.4;
+        }
+
+        .tutorial-cta {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 50px;
+            font-weight: 600;
+            transition: var(--transition);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .tutorial-banner:hover .tutorial-cta {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateX(5px);
+        }
+
+        .tutorial-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: var(--secondary);
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            z-index: 3;
+            animation: pulse 2s infinite;
+        }
+
+        /* Effets de particules dans la bannière */
+        .tutorial-particles {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        .particle {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            animation: float-particle 15s infinite linear;
+        }
+
+        @keyframes float-particle {
+            0% {
+                transform: translateY(100%) rotate(0deg);
+                opacity: 0;
+            }
+            10% {
+                opacity: 0.7;
+            }
+            90% {
+                opacity: 0.7;
+            }
+            100% {
+                transform: translateY(-100%) rotate(360deg);
+                opacity: 0;
+            }
+        }
+
+        /* Referral Banner */
+        .referral-banner {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            border-radius: var(--radius);
+            padding: 15px;
+            margin: 0 15px 20px;
+            color: white;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(138, 43, 226, 0.3);
+        }
+
+        .referral-banner h3 {
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+        }
+
+        .referral-banner p {
+            font-size: 13px;
+            margin-bottom: 12px;
+            opacity: 0.9;
+        }
+
+        .banner-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 50px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            font-size: 12px;
+        }
+
+        .banner-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(26, 26, 46, 0.95);
+            backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: space-around;
+            padding: 12px 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 100;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: var(--text-light);
+            font-size: 11px;
+            transition: var(--transition);
+            cursor: pointer;
+        }
+
+        .nav-item.active {
+            color: var(--accent);
+        }
+
+        .nav-icon {
+            font-size: 18px;
+        }
+
+        /* Modal Styles - MODIFICATIONS APPORTÉES */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+            opacity: 0;
+            visibility: hidden;
+            transition: var(--transition);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .subscription-modal {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            width: 100%;
+            max-width: 380px;
+            max-height: 85vh;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            transform: translateY(30px);
+            transition: var(--transition);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-overlay.active .subscription-modal {
+            transform: translateY(0);
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            padding: 15px 20px;
+            text-align: center;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(255, 255, 255, 0.2);
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .modal-close:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: rotate(90deg);
+        }
+
+        .modal-game-icon {
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            margin: 0 auto 8px;
+        }
+
+        .modal-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .modal-subtitle {
+            font-size: 0.85rem;
+            opacity: 0.9;
+        }
+
+        .plans-container {
+            padding: 15px 20px;
+            overflow-y: auto;
+            flex-grow: 1;
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary) rgba(0, 0, 0, 0.1);
+        }
+
+        .plans-container::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .plans-container::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 10px;
+        }
+
+        .plans-container::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 10px;
+        }
+
+        /* Styles pour la modale Paystack */
+        .payment-info {
+            background: rgba(138, 43, 226, 0.05);
+            border-radius: var(--radius);
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .info-label {
+            font-weight: 500;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+
+        .info-value {
+            font-weight: 600;
+            color: var(--primary);
+            font-size: 0.95rem;
+        }
+
+        .email-input {
+            margin-bottom: 20px;
+        }
+
+        .email-input label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text);
+            font-size: 0.95rem;
+        }
+
+        .email-input label i {
+            color: var(--primary);
+            margin-right: 8px;
+        }
+
+        .email-input input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid rgba(138, 43, 226, 0.1);
+            border-radius: var(--radius);
+            font-size: 0.95rem;
+            transition: var(--transition);
+        }
+
+        .email-input input:focus {
+            border-color: var(--primary);
+            outline: none;
+        }
+
+        .email-help {
+            font-size: 0.8rem;
+            color: var(--text-light);
+            margin-top: 5px;
+        }
+
+        .payment-security {
+            background: rgba(0, 212, 255, 0.05);
+            border-radius: var(--radius);
+            padding: 15px;
+            margin-bottom: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+        }
+
+        .security-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+            color: var(--text-light);
+        }
+
+        .security-item i {
+            color: var(--accent);
+            font-size: 0.9rem;
+        }
+
+        .payment-warning {
+            background: rgba(255, 193, 7, 0.1);
+            border-left: 4px solid var(--warning);
+            padding: 12px 15px;
+            border-radius: 4px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .payment-warning i {
+            color: var(--warning);
+            font-size: 1.2rem;
+            margin-top: 2px;
+        }
+
+        .payment-warning p {
+            font-size: 0.85rem;
+            color: var(--text);
+            line-height: 1.4;
+            margin: 0;
+        }
+
+        .plan-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .plan-option {
+            background: rgba(138, 43, 226, 0.05);
+            border: 2px solid rgba(138, 43, 226, 0.1);
+            border-radius: var(--radius);
+            padding: 12px;
+            cursor: pointer;
+            transition: var(--transition);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .plan-option:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(138, 43, 226, 0.15);
+        }
+
+        .plan-option.selected {
+            border-color: var(--primary);
+            background: rgba(138, 43, 226, 0.1);
+            box-shadow: 0 0 0 2px rgba(138, 43, 226, 0.2);
+        }
+
+        .plan-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .plan-name {
+            font-weight: 600;
+            color: var(--text);
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .plan-icon {
+            color: var(--primary);
+            font-size: 0.9rem;
+        }
+
+        .plan-price {
+            font-weight: 700;
+            color: var(--primary);
+            font-size: 1rem;
+        }
+
+        .plan-duration {
+            font-size: 0.8rem;
+            color: var(--text-light);
+            margin-bottom: 3px;
+        }
+
+        .plan-features {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .feature-icon {
+            color: var(--success);
+            font-size: 0.7rem;
+        }
+
+        .plan-badge {
+            position: absolute;
+            top: -8px;
+            right: 15px;
+            background: var(--secondary);
+            color: white;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.65rem;
+            font-weight: 600;
+        }
+
+        .modal-actions {
+            padding: 15px 20px;
+            display: flex;
+            gap: 10px;
+            flex-shrink: 0;
+            border-top: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .confirm-btn {
+            flex: 1;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: var(--radius);
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 0.95rem;
+        }
+
+        .confirm-btn:hover {
+            background: linear-gradient(135deg, var(--primary-dark), #5a189a);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(138, 43, 226, 0.3);
+        }
+
+        .cancel-btn {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.05);
+            color: var(--text);
+            border: none;
+            padding: 12px;
+            border-radius: var(--radius);
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 0.95rem;
+        }
+
+        .cancel-btn:hover {
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        /* Système de notifications élégant */
+        .notification-system {
+            position: fixed;
+            top: 80px;
+            right: 15px;
+            z-index: 2000;
+            max-width: 320px;
+        }
+
+        .notification {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 15px;
+            margin-bottom: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            border-left: 4px solid var(--primary);
+            transform: translateX(400px);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        .notification.hide {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+
+        .notification.success {
+            border-left-color: var(--success);
+        }
+
+        .notification.warning {
+            border-left-color: var(--warning);
+        }
+
+        .notification.error {
+            border-left-color: var(--secondary);
+        }
+
+        .notification.info {
+            border-left-color: var(--accent);
+        }
+
+        .notification-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .notification.success .notification-icon {
+            background: rgba(40, 167, 69, 0.15);
+            color: var(--success);
+        }
+
+        .notification.warning .notification-icon {
+            background: rgba(255, 193, 7, 0.15);
+            color: var(--warning);
+        }
+
+        .notification.error .notification-icon {
+            background: rgba(255, 107, 107, 0.15);
+            color: var(--secondary);
+        }
+
+        .notification.info .notification-icon {
+            background: rgba(0, 212, 255, 0.15);
+            color: var(--accent);
+        }
+
+        .notification-content {
+            flex: 1;
+        }
+
+        .notification-title {
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 4px;
+            font-size: 14px;
+        }
+
+        .notification-message {
+            color: var(--text-light);
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        .notification-close {
+            background: none;
+            border: none;
+            color: var(--text-light);
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: var(--transition);
+            flex-shrink: 0;
+        }
+
+        .notification-close:hover {
+            background: rgba(0, 0, 0, 0.05);
+            color: var(--text);
+        }
+
+        /* Modal de confirmation personnalisée */
+        .confirmation-modal {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 25px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            transform: scale(0.8);
+            transition: var(--transition);
+            text-align: center;
+        }
+
+        .modal-overlay.active .confirmation-modal {
+            transform: scale(1);
+        }
+
+        .confirmation-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: rgba(255, 107, 107, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: var(--secondary);
+            margin: 0 auto 15px;
+        }
+
+        .confirmation-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 10px;
+        }
+
+        .confirmation-message {
+            color: var(--text-light);
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        .confirmation-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .confirm-btn.danger {
+            background: var(--secondary);
+            color: white;
+        }
+
+        .confirm-btn.danger:hover {
+            background: #ff5252;
+            transform: translateY(-2px);
+        }
+
+        .confirm-btn.cancel {
+            background: rgba(0, 0, 0, 0.05);
+            color: var(--text);
+        }
+
+        .confirm-btn.cancel:hover {
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Responsive Design Amélioré */
+
+        /* Tablettes en mode portrait */
+        @media (max-width: 768px) {
+            .app-container {
+                max-width: 100%;
+                padding: 0 10px 90px;
+            }
+            
+            .app-header {
+                padding: 15px 10px;
+            }
+            
+            .logo-text {
+                font-size: 1.2rem;
+            }
+            
+            .welcome-section {
+                padding: 15px 10px;
+            }
+            
+            .welcome-title {
+                font-size: 1.6rem;
+            }
+            
+            .welcome-subtitle {
+                font-size: 0.9rem;
+            }
+            
+            .featured-cards {
+                margin: 0 10px 15px;
+                gap: 8px;
+            }
+            
+            .featured-card {
+                padding: 12px 8px;
+                min-height: 110px;
+            }
+            
+            .featured-icon {
+                font-size: 1.5rem;
+                height: 45px;
+                width: 45px;
+                margin-bottom: 8px;
+            }
+            
+            .featured-title {
+                font-size: 0.9rem;
+            }
+            
+            .featured-desc {
+                font-size: 0.75rem;
+            }
+            
+            .section-title {
+                margin: 0 10px 12px;
+            }
+            
+            .games-grid {
+                margin: 0 10px 15px;
+                gap: 10px;
+            }
+            
+            .tutorial-section {
+                margin: 0 10px 15px;
+            }
+            
+            .tutorial-banner {
+                padding: 20px;
+            }
+            
+            .tutorial-icon {
+                width: 60px;
+                height: 60px;
+                font-size: 25px;
+            }
+            
+            .tutorial-title {
+                font-size: 1.3rem;
+            }
+            
+            .tutorial-subtitle {
+                font-size: 0.9rem;
+            }
+            
+            .referral-banner {
+                margin: 0 10px 15px;
+                padding: 12px;
+            }
+            
+            .modal-overlay {
+                padding: 15px;
+            }
+            
+            .subscription-modal {
+                max-width: 90%;
+                max-height: 90vh;
+            }
+            
+            .notification-system {
+                right: 10px;
+                left: 10px;
+                max-width: calc(100% - 20px);
+            }
+            
+            .bottom-nav {
+                padding: 10px 0;
+            }
+            
+            .nav-item {
+                font-size: 10px;
+            }
+            
+            .nav-icon {
+                font-size: 16px;
+            }
+        }
+
+        /* Smartphones en mode paysage */
+        @media (max-width: 768px) and (orientation: landscape) {
+            .app-container {
+                padding-bottom: 70px;
+            }
+            
+            .welcome-section {
+                padding: 10px;
+            }
+            
+            .welcome-title {
+                font-size: 1.4rem;
+                margin-bottom: 5px;
+            }
+            
+            .welcome-subtitle {
+                font-size: 0.8rem;
+                margin-bottom: 10px;
+            }
+            
+            .featured-cards {
+                margin-bottom: 10px;
+                padding-bottom: 3px;
+            }
+            
+            .games-grid {
+                gap: 8px;
+            }
+            
+            .tutorial-banner {
+                padding: 15px;
+            }
+            
+            .tutorial-content {
+                gap: 15px;
+            }
+            
+            .bottom-nav {
+                padding: 8px 0;
+            }
+        }
+
+        /* Smartphones en mode portrait (petits écrans) */
+        @media (max-width: 480px) {
+            .app-container {
+                padding: 0 8px 85px;
+            }
+            
+            .app-header {
+                padding: 12px 8px 8px;
+            }
+            
+            .logo-icon {
+                width: 32px;
+                height: 32px;
+                font-size: 16px;
+            }
+            
+            .logo-text {
+                font-size: 1.2rem;
+            }
+            
+            .icon-btn {
+                width: 32px;
+                height: 32px;
+                font-size: 14px;
+            }
+            
+            .welcome-section {
+                padding: 12px 8px;
+            }
+            
+            .welcome-title {
+                font-size: 1.4rem;
+                margin-bottom: 8px;
+            }
+            
+            .welcome-subtitle {
+                font-size: 0.85rem;
+                margin-bottom: 15px;
+                line-height: 1.4;
+            }
+            
+            .featured-cards {
+                margin: 0 8px 12px;
+                gap: 6px;
+            }
+            
+            .featured-card {
+                padding: 10px 6px;
+                min-height: 100px;
+            }
+            
+            .featured-icon {
+                font-size: 1.3rem;
+                height: 40px;
+                width: 40px;
+                margin-bottom: 6px;
+            }
+            
+            .featured-title {
+                font-size: 0.85rem;
+            }
+            
+            .featured-desc {
+                font-size: 0.7rem;
+            }
+            
+            .featured-badge {
+                top: 5px;
+                right: 5px;
+                font-size: 0.55rem;
+                padding: 2px 5px;
+            }
+            
+            .section-title {
+                margin: 0 8px 12px;
+                font-size: 1.2rem;
+            }
+            
+            .see-all {
+                font-size: 0.85rem;
+            }
+            
+            .games-grid {
+                margin: 0 8px 15px;
+                gap: 10px;
+            }
+            
+            .game-card {
+                border-radius: 10px;
+            }
+            
+            .game-image {
+                height: 100px;
+            }
+            
+            .game-title {
+                font-size: 13px;
+                margin-bottom: 4px;
+            }
+            
+            .game-desc {
+                font-size: 10px;
+            }
+            
+            .game-meta {
+                height: 25px;
+                margin-bottom: 6px;
+            }
+            
+            .game-rating {
+                font-size: 10px;
+            }
+            
+            .buy-button {
+                padding: 7px 12px;
+                font-size: 11px;
+            }
+            
+            .tutorial-section {
+                margin: 0 8px 12px;
+            }
+            
+            .tutorial-banner {
+                padding: 15px;
+            }
+            
+            .tutorial-content {
+                flex-direction: column;
+                text-align: center;
+                gap: 15px;
+            }
+            
+            .tutorial-icon {
+                width: 50px;
+                height: 50px;
+                font-size: 22px;
+            }
+            
+            .tutorial-title {
+                font-size: 1.2rem;
+                justify-content: center;
+            }
+            
+            .tutorial-subtitle {
+                font-size: 0.85rem;
+            }
+            
+            .tutorial-cta {
+                padding: 8px 16px;
+                font-size: 13px;
+            }
+            
+            .tutorial-badge {
+                top: 10px;
+                right: 10px;
+                font-size: 0.7rem;
+                padding: 4px 10px;
+            }
+            
+            .referral-banner {
+                margin: 0 8px 12px;
+                padding: 12px;
+            }
+            
+            .referral-banner h3 {
+                font-size: 1rem;
+            }
+            
+            .referral-banner p {
+                font-size: 12px;
+            }
+            
+            .banner-btn {
+                padding: 7px 14px;
+                font-size: 11px;
+            }
+            
+            .modal-overlay {
+                padding: 10px;
+            }
+            
+            .subscription-modal {
+                max-width: 95%;
+                border-radius: 10px;
+            }
+            
+            .modal-header {
+                padding: 15px;
+            }
+            
+            .modal-title {
+                font-size: 1.2rem;
+                margin-bottom: 3px;
+            }
+            
+            .modal-subtitle {
+                font-size: 0.85rem;
+            }
+            
+            .modal-close {
+                width: 28px;
+                height: 28px;
+                top: 12px;
+                right: 12px;
+                font-size: 14px;
+            }
+            
+            .notification-system {
+                top: 70px;
+                right: 8px;
+                left: 8px;
+            }
+            
+            .notification {
+                padding: 12px;
+            }
+            
+            .notification-icon {
+                width: 32px;
+                height: 32px;
+                font-size: 14px;
+            }
+            
+            .notification-title {
+                font-size: 13px;
+            }
+            
+            .notification-message {
+                font-size: 12px;
+            }
+            
+            .bottom-nav {
+                padding: 10px 0 8px;
+            }
+            
+            .nav-item {
+                font-size: 9px;
+                gap: 3px;
+            }
+            
+            .nav-icon {
+                font-size: 15px;
+            }
+        }
+
+        /* Très petits écrans (iPhone SE, etc.) */
+        @media (max-width: 375px) {
+            .app-container {
+                padding: 0 6px 80px;
+            }
+            
+            .app-header {
+                padding: 10px 6px 6px;
+            }
+            
+            .welcome-title {
+                font-size: 1.3rem;
+            }
+            
+            .welcome-subtitle {
+                font-size: 0.8rem;
+            }
+            
+            .featured-cards {
+                margin: 0 6px 10px;
+                gap: 5px;
+            }
+            
+            .featured-card {
+                padding: 8px 5px;
+                min-height: 90px;
+            }
+            
+            .featured-icon {
+                font-size: 1.2rem;
+                height: 35px;
+                width: 35px;
+                margin-bottom: 5px;
+            }
+            
+            .featured-title {
+                font-size: 0.8rem;
+            }
+            
+            .featured-desc {
+                font-size: 0.65rem;
+            }
+            
+            .section-title {
+                margin: 0 6px 10px;
+                font-size: 1.1rem;
+            }
+            
+            .see-all {
+                font-size: 0.8rem;
+            }
+            
+            .games-grid {
+                margin: 0 6px 12px;
+                gap: 8px;
+            }
+            
+            .game-title {
+                font-size: 12px;
+            }
+            
+            .game-desc {
+                font-size: 9px;
+            }
+            
+            .game-meta {
+                height: 22px;
+                margin-bottom: 5px;
+            }
+            
+            .tutorial-banner {
+                padding: 12px;
+            }
+            
+            .tutorial-icon {
+                width: 45px;
+                height: 45px;
+                font-size: 20px;
+            }
+            
+            .tutorial-title {
+                font-size: 1.1rem;
+            }
+            
+            .modal-header {
+                padding: 12px;
+            }
+            
+            .modal-title {
+                font-size: 1.1rem;
+            }
+            
+            .bottom-nav {
+                padding: 8px 0 6px;
+            }
+            
+            .nav-item {
+                font-size: 8px;
+            }
+            
+            .nav-icon {
+                font-size: 14px;
+            }
+        }
+
+        /* Écrans larges (desktop) */
+        @media (min-width: 1200px) {
+            .app-container {
+                max-width: 1100px;
+            }
+            
+            .games-grid {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 20px;
+            }
+            
+            .welcome-section {
+                padding: 30px 20px;
+            }
+            
+            .welcome-title {
+                font-size: 2.2rem;
+            }
+            
+            .welcome-subtitle {
+                font-size: 1.1rem;
+            }
+            
+            .featured-cards {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 15px;
+                margin: 0 20px 25px;
+            }
+            
+            .featured-card {
+                padding: 20px 15px;
+                min-height: 140px;
+            }
+            
+            .featured-icon {
+                font-size: 2.2rem;
+                height: 60px;
+                width: 60px;
+                margin-bottom: 15px;
+            }
+            
+            .featured-title {
+                font-size: 1.1rem;
+            }
+            
+            .featured-desc {
+                font-size: 0.9rem;
+            }
+            
+            .tutorial-section {
+                margin: 0 20px 25px;
+            }
+            
+            .tutorial-banner {
+                padding: 30px;
+            }
+            
+            .tutorial-icon {
+                width: 80px;
+                height: 80px;
+                font-size: 35px;
+            }
+            
+            .tutorial-title {
+                font-size: 1.8rem;
+            }
+            
+            .tutorial-subtitle {
+                font-size: 1.1rem;
+            }
+        }
+
+        /* Support pour les modes sombre/clair du système */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --card-bg: rgba(30, 30, 46, 0.95);
+                --text: #FFFFFF;
+                --text-light: #A0A0C0;
+            }
+            
+            .game-card {
+                background: var(--card-bg);
+            }
+            
+            .game-title {
+                color: var(--text);
+            }
+            
+            .game-desc {
+                color: var(--text-light);
+            }
+        }
+
+        /* Support pour le texte plus grand (accessibilité) */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+            
+            .featured-badge {
+                animation: none;
+            }
+            
+            .featured-animation::after {
+                animation: none;
+                display: none;
+            }
+            
+            .tutorial-icon {
+                animation: none;
+            }
+            
+            .tutorial-badge {
+                animation: none;
+            }
+            
+            .particle {
+                animation: none;
+                display: none;
+            }
+        }
+
+        /* Correction pour le défilement sur iOS */
+        @supports (-webkit-touch-callout: none) {
+            body {
+                min-height: -webkit-fill-available;
+            }
+            
+            .app-container {
+                padding-bottom: calc(100px + env(safe-area-inset-bottom));
+            }
+            
+            .bottom-nav {
+                padding-bottom: max(12px, env(safe-area-inset-bottom));
+            }
+        }
+
+        /* Responsive Grid pour tablettes */
+        @media (min-width: 768px) {
+            .games-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Système de notifications -->
+    <div class="notification-system" id="notificationSystem"></div>
+
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo">
+                <div class="logo-icon">
+                    <i class="fas fa-dice"></i>
+                </div>
+                <div class="logo-text">GameHub</div>
+            </div>
+            <div class="user-actions">
+                <div class="icon-btn" onclick="window.location.href='profil.html'">
+                    <i class="fas fa-user"></i>
+                </div>
+            </div>
+        </header>
+
+        <!-- Welcome Section -->
+        <section class="welcome-section">
+            <h1 class="welcome-title">Bienvenue sur GameHub</h1>
+            <p class="welcome-subtitle">Découvrez les meilleurs bots gaming et maximisez vos gains</p>
+        </section>
+
+        <!-- Featured Cards Section (Remplace Quick Stats) -->
+        <div class="featured-cards">
+            <!-- Carte 1: Nouveautés -->
+            <div class="featured-card" onclick="window.location.href='jeux.html'">
+                <div class="featured-animation"></div>
+                <div class="featured-icon">
+                    <i class="fas fa-rocket"></i>
+                </div>
+                <div class="featured-title">Nouveaux Bots</div>
+                <div class="featured-desc">Découvrez nos dernières sorties</div>
+                <div class="featured-badge">NEW</div>
+            </div>
+
+            <!-- Carte 2: Promotions -->
+            <div class="featured-card" onclick="window.location.href='promotions.html'">
+                <div class="featured-animation"></div>
+                <div class="featured-icon">
+                    <i class="fas fa-gift"></i>
+                </div>
+                <div class="featured-title">Promotions</div>
+                <div class="featured-desc">Offres exclusives en cours</div>
+                <div class="featured-badge">-50%</div>
+            </div>
+
+            <!-- Carte 3: Tendance -->
+            <div class="featured-card" onclick="showTrendingGames()">
+                <div class="featured-animation"></div>
+                <div class="featured-icon">
+                    <i class="fas fa-fire"></i>
+                </div>
+                <div class="featured-title">Tendance</div>
+                <div class="featured-desc">Les plus populaires cette semaine</div>
+                <div class="featured-badge">HOT</div>
+            </div>
+        </div>
+
+        <!-- Referral Banner -->
+        <section class="referral-banner">
+            <h3>Gagnez 30% de commission</h3>
+            <p>Parrainez vos amis et gagnez sur chaque achat de bot</p>
+            <button class="banner-btn" onclick="window.location.href='profil.html'">
+                <i class="fas fa-user-plus"></i> Devenir parrain
+            </button>
+        </section>
+
+        <!-- Jeux Principaux -->
+        <div class="section-title">
+            <span>Jeux Disponibles</span>
+            <a href="jeux.html" class="see-all">Mes jeux achetés</a>
+        </div>
+
+        <div class="games-grid" id="gamesGrid">
+            <!-- Les jeux seront chargés dynamiquement, mais avec un contenu par défaut -->
+            <div class="game-card" data-game-id="king-thimbles">
+                <div class="game-image">
+                    <img src="https://i.ibb.co/kVBjcXjX/jsorg.jpg" alt="King Thimbles">
+                </div>
+                <div class="game-info">
+                    <div class="game-title">King Thimbles</div>
+                    <div class="game-desc">Jeu de dés classique avec multiplicateurs</div>
+                    <div class="game-meta">
+                        <div class="game-rating">
+                            <i class="fas fa-star"></i>
+                            <span>4.8</span>
+                        </div>
+                    </div>
+                    <button class="buy-button">
+                        <i class="fas fa-shopping-cart"></i> Acheter
+                    </button>
+                </div>
+            </div>
+
+            <div class="game-card" data-game-id="mines">
+                <div class="game-image">
+                    <img src="https://i.ibb.co/cSRCZfxg/jsorg.jpg" alt="Mines">
+                </div>
+                <div class="game-info">
+                    <div class="game-title">Mines</div>
+                    <div class="game-desc">Jeu de stratégie avec déminage</div>
+                    <div class="game-meta">
+                        <div class="game-rating">
+                            <i class="fas fa-star"></i>
+                            <span>4.6</span>
+                        </div>
+                    </div>
+                    <button class="buy-button">
+                        <i class="fas fa-shopping-cart"></i> Acheter
+                    </button>
+                </div>
+            </div>
+
+            <div class="game-card" data-game-id="luckyjet">
+                <div class="game-image">
+                    <img src="https://i.ibb.co/0pJ3v0VD/jsorg.jpg" alt="LuckyJet">
+                </div>
+                <div class="game-info">
+                    <div class="game-title">LuckyJet</div>
+                    <div class="game-desc">Jeu de crash avec multiplicateurs</div>
+                    <div class="game-meta">
+                        <div class="game-rating">
+                            <i class="fas fa-star"></i>
+                            <span>4.9</span>
+                        </div>
+                    </div>
+                    <button class="buy-button">
+                        <i class="fas fa-shopping-cart"></i> Acheter
+                    </button>
+                </div>
+            </div>
+
+            <div class="game-card" data-game-id="crime-empire">
+                <div class="game-image">
+                    <img src="https://i.ibb.co/YFSrYrTM/jsorg.jpg" alt="Crime Empire">
+                </div>
+                <div class="game-info">
+                    <div class="game-title">Crime Empire</div>
+                    <div class="game-desc">Jeu de stratégie criminelle</div>
+                    <div class="game-meta">
+                        <div class="game-rating">
+                            <i class="fas fa-star"></i>
+                            <span>4.7</span>
+                        </div>
+                    </div>
+                    <button class="buy-button">
+                        <i class="fas fa-shopping-cart"></i> Acheter
+                    </button>
+                </div>
+            </div>
+
+            <div class="game-card" data-game-id="rocket-queen">
+                <div class="game-image">
+                    <img src="https://i.ibb.co/qTx4brW/jsorg.jpg" alt="Rocket Queen">
+                </div>
+                <div class="game-info">
+                    <div class="game-title">Rocket Queen</div>
+                    <div class="game-desc">Jeu de fusée avec gains exponentiels</div>
+                    <div class="game-meta">
+                        <div class="game-rating">
+                            <i class="fas fa-star"></i>
+                            <span>4.8</span>
+                        </div>
+                    </div>
+                    <button class="buy-button">
+                        <i class="fas fa-shopping-cart"></i> Acheter
+                    </button>
+                </div>
+            </div>
+
+            <div class="game-card" data-game-id="crash">
+                <div class="game-image">
+                    <img src="https://slotcatalog.com/userfiles/image/games/1Win-Games/44753/crash-1win-games-7097116.webp" alt="Crash">
+                </div>
+                <div class="game-info">
+                    <div class="game-title">Crash</div>
+                    <div class="game-desc">Jeu de crash classique</div>
+                    <div class="game-meta">
+                        <div class="game-rating">
+                            <i class="fas fa-star"></i>
+                            <span>4.5</span>
+                        </div>
+                    </div>
+                    <button class="buy-button">
+                        <i class="fas fa-shopping-cart"></i> Acheter
+                    </button>
+                </div>
+            </div>
+
+            <div class="game-card" data-game-id="rocket-x">
+                <div class="game-image">
+                    <img src="https://1winbet-th.com/wp-content/uploads/2024/07/rocket-x-at-1win-min.png" alt="Rocket X">
+                </div>
+                <div class="game-info">
+                    <div class="game-title">Rocket X</div>
+                    <div class="game-desc">Nouvelle génération de jeu de fusée</div>
+                    <div class="game-meta">
+                        <div class="game-rating">
+                            <i class="fas fa-star"></i>
+                            <span>4.9</span>
+                        </div>
+                    </div>
+                    <button class="buy-button">
+                        <i class="fas fa-shopping-cart"></i> Acheter
+                    </button>
+                </div>
+            </div>
+
+            <div class="game-card" data-game-id="astronaute">
+                <div class="game-image">
+                    <img src="https://astronaut-slotgame.com/images/logo.webp" alt="Astronaute">
+                </div>
+                <div class="game-info">
+                    <div class="game-title">Astronaute</div>
+                    <div class="game-desc">Aventure spatiale avec gains cosmiques</div>
+                    <div class="game-meta">
+                        <div class="game-rating">
+                            <i class="fas fa-star"></i>
+                            <span>4.7</span>
+                        </div>
+                    </div>
+                    <button class="buy-button">
+                        <i class="fas fa-shopping-cart"></i> Acheter
+                    </button>
+                </div>
+            </div>
+
+            <div class="game-card" data-game-id="speed-cash">
+                <div class="game-image">
+                    <img src="https://1wins-bangladesh.com/wp-content/uploads/2025/09/1-about-1win-speed-n-cash-casino-game.webp" alt="Speed & Cash">
+                </div>
+                <div class="game-info">
+                    <div class="game-title">Speed & Cash</div>
+                    <div class="game-desc">Jeu de vitesse avec gains rapides</div>
+                    <div class="game-meta">
+                        <div class="game-rating">
+                            <i class="fas fa-star"></i>
+                            <span>4.6</span>
+                        </div>
+                    </div>
+                    <button class="buy-button">
+                        <i class="fas fa-shopping-cart"></i> Acheter
+                    </button>
+                </div>
+            </div>
+
+            <div class="game-card" data-game-id="tropicana">
+                <div class="game-image">
+                    <img src="https://slotcatalog.com/userfiles/image/games/100hp-gaming/38701/tropicana-100hp-gaming-7054923.webp" alt="Tropicana">
+                </div>
+                <div class="game-info">
+                    <div class="game-title">Tropicana</div>
+                    <div class="game-desc">Ambiance tropicale avec bonus</div>
+                    <div class="game-meta">
+                        <div class="game-rating">
+                            <i class="fas fa-star"></i>
+                            <span>4.4</span>
+                        </div>
+                    </div>
+                    <button class="buy-button">
+                        <i class="fas fa-shopping-cart"></i> Acheter
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bookmakers Section -->
+        <div class="section-title">
+            <span>Bookmakers</span>
+            <a href="#" class="see-all">Voir tous</a>
+        </div>
+
+        <div class="games-grid" id="bookmakersGrid">
+            <!-- Les bookmakers seront chargés dynamiquement, mais avec un contenu par défaut -->
+            <div class="game-card" data-game-id="1xbet">
+                <div class="game-image">
+                    <img src="https://global-webnews.net/wp-content/uploads/2025/05/%D0%97%D0%BD%D1%96%D0%BC%D0%BE%D0%BA-%D0%B5%D0%BA%D1%80%D0%B0%D0%BD%D0%B0-2025-05-23-103632-850x560.png" alt="1xbet">
+                </div>
+                <div class="game-info">
+                    <div class="game-title">1xbet</div>
+                    <div class="game-desc">Plateforme de paris sportifs complète</div>
+                    <div class="game-meta">
+                        <div class="game-rating">
+                            <i class="fas fa-star"></i>
+                            <span>4.8</span>
+                        </div>
+                    </div>
+                    <button class="buy-button">
+                        <i class="fas fa-shopping-cart"></i> Acheter
+                    </button>
+                </div>
+            </div>
+
+            <div class="game-card" data-game-id="betwinner">
+                <div class="game-image">
+                    <img src="https://pictest.top/wp-content/uploads/2023/05/imagem-betwinner-scaled.webp" alt="Betwinner">
+                </div>
+                <div class="game-info">
+                    <div class="game-title">Betwinner</div>
+                    <div class="game-desc">Pariez sur tous les sports</div>
+                    <div class="game-meta">
+                        <div class="game-rating">
+                            <i class="fas fa-star"></i>
+                            <span>4.7</span>
+                        </div>
+                    </div>
+                    <button class="buy-button">
+                        <i class="fas fa-shopping-cart"></i> Acheter
+                    </button>
+                </div>
+            </div>
+
+            <div class="game-card" data-game-id="betclic">
+                <div class="game-image">
+                    <img src="https://assets.goal.com/images/v3/bltd813b31eee4761c0/Betclic.jpg?auto=webp&format=pjpg&width=3840&quality=60" alt="Betclic">
+                </div>
+                <div class="game-info">
+                    <div class="game-title">Betclic</div>
+                    <div class="game-desc">Leader des paris en France</div>
+                    <div class="game-meta">
+                        <div class="game-rating">
+                            <i class="fas fa-star"></i>
+                            <span>4.6</span>
+                        </div>
+                    </div>
+                    <button class="buy-button">
+                        <i class="fas fa-shopping-cart"></i> Acheter
+                    </button>
+                </div>
+            </div>
+
+            <div class="game-card" data-game-id="betmomo">
+                <div class="game-image">
+                    <img src="https://i0.wp.com/supertutobet.com/wp-content/uploads/2025/01/900x900_Betmomo.png" alt="Betmomo">
+                </div>
+                <div class="game-info">
+                    <div class="game-title">Betmomo</div>
+                    <div class="game-desc">Spécialiste des paris africains</div>
+                    <div class="game-meta">
+                        <div class="game-rating">
+                            <i class="fas fa-star"></i>
+                            <span>4.5</span>
+                        </div>
+                    </div>
+                    <button class="buy-button">
+                        <i class="fas fa-shopping-cart"></i> Acheter
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tutoriel Section - NOUVELLE SECTION -->
+        <div class="section-title">
+            <span>Tutoriels Vidéo</span>
+            <a href="tutoriel.html" class="see-all">Voir tous les tutoriels</a>
+        </div>
+
+        <div class="tutorial-section">
+            <div class="tutorial-banner" onclick="window.location.href='tutoriel.html'">
+                <div class="tutorial-particles" id="tutorialParticles"></div>
+                <div class="tutorial-badge">NOUVEAU</div>
+                <div class="tutorial-content">
+                    <div class="tutorial-icon">
+                        <i class="fas fa-graduation-cap"></i>
+                    </div>
+                    <div class="tutorial-text">
+                        <h3 class="tutorial-title">
+                            <i class="fas fa-play-circle"></i>
+                            Maîtrisez tous les bots
+                        </h3>
+                        <p class="tutorial-subtitle">
+                            Apprenez à utiliser chaque bot comme un expert ! Accédez à nos tutoriels vidéo complets 
+                            pour maximiser vos gains avec chaque jeu et bookmaker.
+                        </p>
+                        <div class="tutorial-cta">
+                            <i class="fas fa-video"></i>
+                            Voir les tutoriels maintenant
+                            <i class="fas fa-arrow-right"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Subscription Modal - AMÉLIORÉE -->
+    <div class="modal-overlay" id="subscriptionModal">
+        <div class="subscription-modal">
+            <div class="modal-header">
+                <div class="modal-close" onclick="closeSubscriptionModal()">
+                    <i class="fas fa-times"></i>
+                </div>
+                <div class="modal-game-icon">
+                    <i class="fas fa-gamepad" id="modalGameIcon"></i>
+                </div>
+                <h2 class="modal-title" id="modalGameName">LuckyJet</h2>
+                <p class="modal-subtitle">Choisissez votre forfait d'abonnement</p>
+            </div>
+            <div class="plans-container">
+                <h3 class="plans-title">Forfaits disponibles</h3>
+                <div class="plan-options">
+                    <div class="plan-option" data-plan="trial" onclick="selectPlan(this)">
+                        <div class="plan-header">
+                            <div class="plan-name">
+                                <i class="fas fa-play-circle plan-icon"></i>
+                                Forfait Essai
+                            </div>
+                            <div class="plan-price">500Fr</div>
+                        </div>
+                        <div class="plan-duration">Durée: 1 heure</div>
+                        <div class="plan-features">
+                            <i class="fas fa-check feature-icon"></i>
+                            Idéal pour tester le bot
+                        </div>
+                        <div class="plan-badge">Populaire</div>
+                    </div>
+                    <div class="plan-option" data-plan="daily" onclick="selectPlan(this)">
+                        <div class="plan-header">
+                            <div class="plan-name">
+                                <i class="fas fa-sun plan-icon"></i>
+                                Forfait Journalier
+                            </div>
+                            <div class="plan-price">1500Fr</div>
+                        </div>
+                        <div class="plan-duration">Durée: 24 heures</div>
+                        <div class="plan-features">
+                            <i class="fas fa-check feature-icon"></i>
+                            Accès complet pendant une journée
+                        </div>
+                    </div>
+                    <div class="plan-option" data-plan="weekly" onclick="selectPlan(this)">
+                        <div class="plan-header">
+                            <div class="plan-name">
+                                <i class="fas fa-calendar-week plan-icon"></i>
+                                Forfait Hebdomadaire
+                            </div>
+                            <div class="plan-price">5000Fr</div>
+                        </div>
+                        <div class="plan-duration">Durée: 1 semaine</div>
+                        <div class="plan-features">
+                            <i class="fas fa-check feature-icon"></i>
+                            Économisez 28% par rapport au forfait journalier
+                        </div>
+                    </div>
+                    <div class="plan-option" data-plan="monthly" onclick="selectPlan(this)">
+                        <div class="plan-header">
+                            <div class="plan-name">
+                                <i class="fas fa-calendar-alt plan-icon"></i>
+                                Forfait Mensuel
+                            </div>
+                            <div class="plan-price">15000Fr</div>
+                        </div>
+                        <div class="plan-duration">Durée: 1 mois</div>
+                        <div class="plan-features">
+                            <i class="fas fa-check feature-icon"></i>
+                            Le meilleur rapport qualité-prix
+                        </div>
+                        <div class="plan-badge">Recommandé</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="cancel-btn" onclick="closeSubscriptionModal()">Annuler</button>
+                <button class="confirm-btn" onclick="confirmPurchase()">Confirmer l'achat</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Paystack Payment Modal -->
+    <div class="modal-overlay" id="paystackModal">
+        <div class="subscription-modal">
+            <div class="modal-header" style="background: linear-gradient(135deg, #00D4FF, #0066FF);">
+                <div class="modal-close" onclick="closePaystackModal()">
+                    <i class="fas fa-times"></i>
+                </div>
+                <div class="modal-game-icon">
+                    <i class="fas fa-credit-card"></i>
+                </div>
+                <h2 class="modal-title">Paiement sécurisé</h2>
+                <p class="modal-subtitle">Finalisez votre achat avec Paystack</p>
+            </div>
+            <div class="plans-container">
+                <div class="payment-info">
+                    <div class="info-row">
+                        <span class="info-label">Jeu :</span>
+                        <span class="info-value" id="paystackGameName"></span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Forfait :</span>
+                        <span class="info-value" id="paystackPlanName"></span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Montant :</span>
+                        <span class="info-value" id="paystackAmount"></span>
+                    </div>
+                </div>
+                
+                <div class="email-input">
+                    <label for="paymentEmail">
+                        <i class="fas fa-envelope"></i> Adresse email
+                    </label>
+                    <input type="email" id="paymentEmail" placeholder="votre@email.com" value="">
+                    <p class="email-help">Vous recevrez la confirmation à cette adresse</p>
+                </div>
+                
+                <div class="payment-security">
+                    <div class="security-item">
+                        <i class="fas fa-shield-alt"></i>
+                        <span>Paiement 100% sécurisé</span>
+                    </div>
+                    <div class="security-item">
+                        <i class="fas fa-lock"></i>
+                        <span>Données cryptées SSL</span>
+                    </div>
+                    <div class="security-item">
+                        <i class="fas fa-sync-alt"></i>
+                        <span>Remboursement sous 24h</span>
+                    </div>
+                </div>
+                
+                <div class="payment-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <p>Ne quittez pas la page de paiement Paystack avant confirmation.</p>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="cancel-btn" onclick="closePaystackModal()">Annuler</button>
+                <button class="confirm-btn" onclick="processPayment()" id="paystackBtn">
+                    <i class="fas fa-credit-card"></i> Payer maintenant
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+        <div class="nav-item active">
+            <i class="fas fa-home nav-icon"></i>
+            <span>Accueil</span>
+        </div>
+        <div class="nav-item" onclick="window.location.href='jeux.html'">
+            <i class="fas fa-gamepad nav-icon"></i>
+            <span>Mes Jeux</span>
+        </div>
+        <div class="nav-item" onclick="window.location.href='promotions.html'">
+            <i class="fas fa-gift nav-icon"></i>
+            <span>Promos</span>
+        </div>
+        <div class="nav-item" onclick="window.location.href='forum.html'">
+            <i class="fas fa-comments nav-icon"></i>
+            <span>Forum</span>
+        </div>
+        <div class="nav-item" onclick="window.location.href='profil.html'">
+            <i class="fas fa-user nav-icon"></i>
+            <span>Profil</span>
+        </div>
+    </nav>
+
+    <script>
+        // Variables globales
+        let currentGameId = null;
+        let selectedPlan = null;
+        let currentPaymentData = null;
+
+        // Configuration Paystack
+        const PAYSTACK_BACKEND_URL = "https://learnhub-backend-wslz.onrender.com";
+        const GAMEHUB_BACKEND_URL = "https://backend-gamehub-eynr.onrender.com";
+
+        // Animation au chargement de la page
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Animation des sections
+            const sections = document.querySelectorAll('.featured-cards, .referral-banner, .games-grid, .tutorial-section');
+            sections.forEach((section, index) => {
+                section.style.animation = `fadeInUp 0.5s ease forwards ${index * 0.1}s`;
+                section.style.opacity = '0';
+            });
+
+            // Animation spécifique pour les cartes featured
+            const featuredCards = document.querySelectorAll('.featured-card');
+            featuredCards.forEach((card, index) => {
+                card.style.animation = `fadeInUp 0.6s ease forwards ${0.2 + (index * 0.1)}s`;
+                card.style.opacity = '0';
+            });
+
+            // Animation pour la bannière tutoriel
+            const tutorialBanner = document.querySelector('.tutorial-banner');
+            if (tutorialBanner) {
+                tutorialBanner.style.animation = `fadeInUp 0.7s ease forwards 0.5s`;
+                tutorialBanner.style.opacity = '0';
+                
+                // Ajouter des particules d'animation
+                createParticles();
+            }
+
+            // Interaction avec la navigation
+            const navItems = document.querySelectorAll('.nav-item');
+            navItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    navItems.forEach(n => n.classList.remove('active'));
+                    this.classList.add('active');
+                });
+            });
+
+            // Interaction avec la bannière tutoriel
+            const tutorialCTA = document.querySelector('.tutorial-cta');
+            if (tutorialCTA) {
+                tutorialCTA.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    window.location.href = 'tutoriel.html';
+                });
+            }
+
+            // Interaction avec le bouton de parrainage
+            const bannerBtn = document.querySelector('.banner-btn');
+            bannerBtn.addEventListener('click', function() {
+                window.location.href = 'profil.html';
+            });
+
+            // Vérifier les paiements récents après un délai
+            setTimeout(async () => {
+                await verifierPaiementRecent();
+            }, 1500);
+        });
+
+        // Fonction pour créer des particules animées dans la bannière tutoriel
+        function createParticles() {
+            const particlesContainer = document.getElementById('tutorialParticles');
+            if (!particlesContainer) return;
+            
+            // Créer 15 particules
+            for (let i = 0; i < 15; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                
+                // Taille aléatoire
+                const size = Math.random() * 8 + 4;
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+                
+                // Position aléatoire
+                particle.style.left = `${Math.random() * 100}%`;
+                
+                // Délai d'animation aléatoire
+                particle.style.animationDelay = `${Math.random() * 5}s`;
+                
+                // Durée d'animation aléatoire
+                const duration = Math.random() * 10 + 10;
+                particle.style.animationDuration = `${duration}s`;
+                
+                particlesContainer.appendChild(particle);
+            }
+        }
+
+        // Fonction pour afficher les jeux tendance
+        function showTrendingGames() {
+            showNotification(
+                'Jeux Tendance',
+                'Découvrez les jeux les plus populaires cette semaine : LuckyJet, Rocket X et Mines',
+                'info',
+                4000
+            );
+        }
+
+        // Fonction pour marquer un jeu comme déjà acheté (AMÉLIORÉE)
+        window.markGameAsPurchased = function(card, expirationDate) {
+            const buyButton = card.querySelector('.buy-button');
+            const gameId = card.getAttribute('data-game-id');
+            
+            if (buyButton) {
+                const now = new Date();
+                const timeDiff = expirationDate - now;
+                
+                if (timeDiff > 0) {
+                    // Licence toujours active
+                    const daysLeft = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+                    const hoursLeft = Math.ceil(timeDiff / (1000 * 60 * 60));
+                    const minutesLeft = Math.ceil(timeDiff / (1000 * 60));
+                    
+                    let timeText = '';
+                    if (daysLeft >= 1) {
+                        timeText = `${daysLeft}j restants`;
+                    } else if (hoursLeft >= 1) {
+                        timeText = `${hoursLeft}h restantes`;
+                    } else {
+                        timeText = `${minutesLeft}min restantes`;
+                    }
+                    
+                    buyButton.innerHTML = `<i class="fas fa-check"></i> Actif (${timeText})`;
+                    buyButton.style.background = 'linear-gradient(135deg, var(--success), #20c997)';
+                    buyButton.onclick = (e) => {
+                        e.stopPropagation();
+                        showNotification(
+                            'Licence active',
+                            `Vous avez une licence active pour ce jeu. Elle expire dans ${timeText}.`,
+                            'info',
+                            4000
+                        );
+                    };
+                    
+                    // Ajouter ou mettre à jour le badge
+                    let badge = card.querySelector('.purchased-badge');
+                    if (!badge) {
+                        badge = document.createElement('div');
+                        badge.className = 'purchased-badge';
+                        card.appendChild(badge);
+                    }
+                    badge.innerHTML = `<i class="fas fa-crown"></i> Actif`;
+                    badge.style.display = 'block';
+                    
+                } else {
+                    // Licence expirée
+                    buyButton.innerHTML = `<i class="fas fa-clock"></i> Licence expirée`;
+                    buyButton.style.background = 'linear-gradient(135deg, var(--expired), #dc3545)';
+                    buyButton.onclick = (e) => {
+                        e.stopPropagation();
+                        showSubscriptionModal(gameId);
+                    };
+                    
+                    // Cacher le badge
+                    const badge = card.querySelector('.purchased-badge');
+                    if (badge) {
+                        badge.style.display = 'none';
+                    }
+                }
+            }
+        };
+
+        // Fonction pour configurer le bouton d'achat
+        function setupBuyButton(card, gameId) {
+            const buyButton = card.querySelector('.buy-button');
+            if (buyButton) {
+                buyButton.innerHTML = `<i class="fas fa-shopping-cart"></i> Acheter`;
+                buyButton.style.background = 'linear-gradient(135deg, var(--primary), var(--primary-dark))';
+                buyButton.onclick = (e) => {
+                    e.stopPropagation();
+                    showSubscriptionModal(gameId);
+                };
+                
+                // Retirer le badge s'il existe
+                const existingBadge = card.querySelector('.purchased-badge');
+                if (existingBadge) {
+                    existingBadge.remove();
+                }
+            }
+        }
+
+        // Fonction pour afficher les détails du jeu
+        function showGameDetails(gameId) {
+            const games = {
+                // Jeux
+                'king-thimbles': { 
+                    name: 'King Thimbles',
+                    description: 'Ce bot vous donnera accès à toutes les variantes du jeu (Predictor, Hack, Montante) après achat.',
+                    type: 'game'
+                },
+                'mines': { 
+                    name: 'Mines',
+                    description: 'Ce bot vous donnera accès à toutes les variantes du jeu (Predictor, Hack, Montante) après achat.',
+                    type: 'game'
+                },
+                'luckyjet': { 
+                    name: 'LuckyJet',
+                    description: 'Ce bot vous donnera accès à toutes les variantes du jeu (Predictor, Hack, Montante) après achat.',
+                    type: 'game'
+                },
+                'crime-empire': { 
+                    name: 'Crime Empire',
+                    description: 'Ce bot vous donnera accès à toutes les variantes du jeu (Predictor, Hack, Montante) après achat.',
+                    type: 'game'
+                },
+                'rocket-queen': { 
+                    name: 'Rocket Queen',
+                    description: 'Ce bot vous donnera accès à toutes les variantes du jeu (Predictor, Hack, Montante) après achat.',
+                    type: 'game'
+                },
+                'crash': { 
+                    name: 'Crash',
+                    description: 'Ce bot vous donnera accès à toutes les variantes du jeu (Predictor, Hack, Montante) après achat.',
+                    type: 'game'
+                },
+                'rocket-x': { 
+                    name: 'Rocket X',
+                    description: 'Ce bot vous donnera accès à toutes les variantes du jeu (Predictor, Hack, Montante) après achat.',
+                    type: 'game'
+                },
+                'astronaute': { 
+                    name: 'Astronaute',
+                    description: 'Ce bot vous donnera accès à toutes les variantes du jeu (Predictor, Hack, Montante) après achat.',
+                    type: 'game'
+                },
+                'speed-cash': { 
+                    name: 'Speed & Cash',
+                    description: 'Ce bot vous donnera accès à toutes les variantes du jeu (Predictor, Hack, Montante) après achat.',
+                    type: 'game'
+                },
+                'tropicana': { 
+                    name: 'Tropicana',
+                    description: 'Ce bot vous donnera accès à toutes les variantes du jeu (Predictor, Hack, Montante) après achat.',
+                    type: 'game'
+                },
+                // Bookmakers
+                '1xbet': { 
+                    name: '1xbet',
+                    description: 'Ce bookmaker vous donnera accès à deux variantes de bots: Predictor et Montante.',
+                    type: 'bookmaker'
+                },
+                'betwinner': { 
+                    name: 'Betwinner',
+                    description: 'Ce bookmaker vous donnera accès à deux variantes de bots: Predictor et Montante.',
+                    type: 'bookmaker'
+                },
+                'betclic': { 
+                    name: 'Betclic',
+                    description: 'Ce bookmaker vous donnera accès à deux variantes de bots: Predictor et Montante.',
+                    type: 'bookmaker'
+                },
+                'betmomo': { 
+                    name: 'Betmomo',
+                    description: 'Ce bookmaker vous donnera accès à deux variantes de bots: Predictor et Montante.',
+                    type: 'bookmaker'
+                }
+            };
+
+            const game = games[gameId];
+            if (game) {
+                showNotification(
+                    game.name,
+                    game.description,
+                    'info',
+                    5000
+                );
+            }
+        }
+
+        // Fonction pour afficher la modale d'abonnement
+        function showSubscriptionModal(gameId) {
+            // Vérifier d'abord si l'utilisateur a déjà une licence active
+            const user = window.auth?.currentUser;
+            if (!user) {
+                showNotification('Connexion requise', 'Veuillez vous connecter pour acheter un jeu.', 'warning', 3000);
+                return;
+            }
+            
+            // Vérifier la licence avant d'afficher la modale
+            window.checkGameLicense(gameId).then(licenseCheck => {
+                if (licenseCheck.hasLicense) {
+                    const daysLeft = Math.ceil((licenseCheck.expirationDate - new Date()) / (1000 * 60 * 60 * 24));
+                    showNotification(
+                        'Déjà acheté',
+                        `Vous avez déjà une licence active pour ce jeu. Elle expire dans ${daysLeft} jours.`,
+                        'info',
+                        4000
+                    );
+                    return;
+                }
+                
+                // Si pas de licence, afficher la modale
+                const games = {
+                    // Jeux
+                    'king-thimbles': { name: 'King Thimbles', icon: 'fa-gamepad' },
+                    'mines': { name: 'Mines', icon: 'fa-gamepad' },
+                    'luckyjet': { name: 'LuckyJet', icon: 'fa-gamepad' },
+                    'crime-empire': { name: 'Crime Empire', icon: 'fa-gamepad' },
+                    'rocket-queen': { name: 'Rocket Queen', icon: 'fa-gamepad' },
+                    'crash': { name: 'Crash', icon: 'fa-gamepad' },
+                    'rocket-x': { name: 'Rocket X', icon: 'fa-gamepad' },
+                    'astronaute': { name: 'Astronaute', icon: 'fa-gamepad' },
+                    'speed-cash': { name: 'Speed & Cash', icon: 'fa-gamepad' },
+                    'tropicana': { name: 'Tropicana', icon: 'fa-gamepad' },
+                    // Bookmakers
+                    '1xbet': { name: '1xbet', icon: 'fa-trophy' },
+                    'betwinner': { name: 'Betwinner', icon: 'fa-trophy' },
+                    'betclic': { name: 'Betclic', icon: 'fa-trophy' },
+                    'betmomo': { name: 'Betmomo', icon: 'fa-trophy' }
+                };
+
+                const game = games[gameId];
+                if (game) {
+                    currentGameId = gameId;
+                    document.getElementById('modalGameName').textContent = game.name;
+                    document.getElementById('modalGameIcon').className = `fas ${game.icon}`;
+                    
+                    // Réinitialiser la sélection
+                    selectedPlan = null;
+                    document.querySelectorAll('.plan-option').forEach(option => {
+                        option.classList.remove('selected');
+                    });
+                    
+                    // Afficher la modale
+                    document.getElementById('subscriptionModal').classList.add('active');
+                    document.body.style.overflow = 'hidden';
+                }
+            }).catch(error => {
+                console.error('Erreur vérification licence:', error);
+                showNotification('Erreur', 'Impossible de vérifier votre licence.', 'error', 3000);
+            });
+        }
+
+        // Fonction pour fermer la modale
+        function closeSubscriptionModal() {
+            document.getElementById('subscriptionModal').classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+
+        // Fonction pour sélectionner un forfait
+        function selectPlan(element) {
+            // Désélectionner tous les forfaits
+            document.querySelectorAll('.plan-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            
+            // Sélectionner le forfait cliqué
+            element.classList.add('selected');
+            selectedPlan = element.getAttribute('data-plan');
+        }
+
+        // Fonction pour confirmer l'achat
+        async function confirmPurchase() {
+            if (!selectedPlan) {
+                showNotification(
+                    'Forfait manquant',
+                    'Veuillez sélectionner un forfait avant de continuer.',
+                    'warning',
+                    4000
+                );
+                return;
+            }
+
+            const games = {
+                // Jeux
+                'king-thimbles': { name: 'King Thimbles', type: 'game' },
+                'mines': { name: 'Mines', type: 'game' },
+                'luckyjet': { name: 'LuckyJet', type: 'game' },
+                'crime-empire': { name: 'Crime Empire', type: 'game' },
+                'rocket-queen': { name: 'Rocket Queen', type: 'game' },
+                'crash': { name: 'Crash', type: 'game' },
+                'rocket-x': { name: 'Rocket X', type: 'game' },
+                'astronaute': { name: 'Astronaute', type: 'game' },
+                'speed-cash': { name: 'Speed & Cash', type: 'game' },
+                'tropicana': { name: 'Tropicana', type: 'game' },
+                // Bookmakers
+                '1xbet': { name: '1xbet', type: 'bookmaker' },
+                'betwinner': { name: 'Betwinner', type: 'bookmaker' },
+                'betclic': { name: 'Betclic', type: 'bookmaker' },
+                'betmomo': { name: 'Betmomo', type: 'bookmaker' }
+            };
+
+            const game = games[currentGameId];
+            if (!game) return;
+
+            const planDetails = {
+                'trial': { name: 'Forfait Essai', price: 500, duration: '1 heure' },
+                'daily': { name: 'Forfait Journalier', price: 1500, duration: '24 heures' },
+                'weekly': { name: 'Forfait Hebdomadaire', price: 5000, duration: '1 semaine' },
+                'monthly': { name: 'Forfait Mensuel', price: 15000, duration: '1 mois' }
+            };
+
+            const plan = planDetails[selectedPlan];
+            
+            // Fermer la modale d'abonnement
+            closeSubscriptionModal();
+            
+            // Ouvrir la modale Paystack
+            showPaystackModal(game.name, plan.name, plan.price, currentGameId, selectedPlan);
+        }
+
+        // Fonction pour afficher la modale Paystack
+        function showPaystackModal(gameName, planName, price, gameId, planType) {
+            currentPaymentData = {
+                gameId,
+                gameName,
+                plan: planType,
+                planName,
+                price
+            };
+            
+            document.getElementById('paystackGameName').textContent = gameName;
+            document.getElementById('paystackPlanName').textContent = planName;
+            document.getElementById('paystackAmount').textContent = price + 'Fr';
+            
+            // Récupérer l'email de l'utilisateur Firebase s'il est connecté
+            const user = window.auth?.currentUser;
+            if (user && user.email) {
+                document.getElementById('paymentEmail').value = user.email;
+            }
+            
+            // Afficher la modale
+            document.getElementById('paystackModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        // Fonction pour fermer la modale Paystack
+        function closePaystackModal() {
+            document.getElementById('paystackModal').classList.remove('active');
+            document.body.style.overflow = 'auto';
+            currentPaymentData = null;
+        }
+
+        // Fonction pour traiter le paiement
+        async function processPayment() {
+            const user = window.auth?.currentUser;
+            if (!user) {
+                showNotification('Erreur', 'Vous devez être connecté pour effectuer un achat.', 'error', 4000);
+                return;
+            }
+
+            const email = document.getElementById('paymentEmail').value.trim();
+            
+            if (!email) {
+                showNotification('Email requis', 'Veuillez entrer votre adresse email.', 'warning', 3000);
+                document.getElementById('paymentEmail').focus();
+                return;
+            }
+            
+            // Validation email simple
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                showNotification('Email invalide', 'Veuillez entrer une adresse email valide.', 'warning', 3000);
+                document.getElementById('paymentEmail').focus();
+                return;
+            }
+            
+            // Désactiver le bouton
+            const paystackBtn = document.getElementById('paystackBtn');
+            paystackBtn.disabled = true;
+            paystackBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Traitement...';
+            
+            try {
+                // Initier le paiement Paystack avec code produit générique
+                const paymentSuccess = await initierPaiementSecurise(
+                    email,
+                    currentPaymentData.price,
+                    currentPaymentData.gameId,
+                    currentPaymentData.gameName,
+                    currentPaymentData.plan,
+                    user.uid
+                );
+                
+                if (!paymentSuccess) {
+                    throw new Error('Échec de l\'initialisation du paiement');
+                }
+                
+            } catch (error) {
+                console.error('Erreur traitement paiement:', error);
+                showNotification(
+                    'Erreur de paiement',
+                    'Une erreur est survenue. Veuillez réessayer.',
+                    'error',
+                    4000
+                );
+                
+                // Réactiver le bouton
+                paystackBtn.disabled = false;
+                paystackBtn.innerHTML = '<i class="fas fa-credit-card"></i> Payer maintenant';
+            }
+        }
+
+        // Fonction pour obtenir un code produit générique
+        function getGenericProductCode(gameId) {
+            const genericMap = {
+                // Jeux → Codes génériques
+                'king-thimbles': 'SERVICE_001',
+                'mines': 'SERVICE_001',
+                'luckyjet': 'SERVICE_002',
+                'crime-empire': 'SERVICE_002',
+                'rocket-queen': 'SERVICE_002',
+                'crash': 'SERVICE_003',
+                'rocket-x': 'SERVICE_003',
+                'astronaute': 'SERVICE_003',
+                'speed-cash': 'SERVICE_004',
+                'tropicana': 'SERVICE_004',
+                // Bookmakers
+                '1xbet': 'SERVICE_005',
+                'betwinner': 'SERVICE_005',
+                'betclic': 'SERVICE_005',
+                'betmomo': 'SERVICE_005'
+            };
+            
+            return genericMap[gameId] || 'SERVICE_001';
+        }
+
+        // Fonction pour initier un paiement Paystack SÉCURISÉ
+        async function initierPaiementSecurise(email, montant, gameId, gameName, plan, userId) {
+            try {
+                // Utiliser un code produit générique
+                const productCode = getGenericProductCode(gameId);
+                
+                const response = await fetch(`${PAYSTACK_BACKEND_URL}/create-payment`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: email,
+                        amount: montant,
+                        userId: userId,
+                        productCode: productCode  // Code générique seulement
+                    }),
+                });
+
+                const data = await response.json();
+                
+                if (data.status && data.data.authorization_url) {
+                    // Stocker les VRAIES données UNIQUEMENT dans localStorage
+                    localStorage.setItem(`pending_purchase_${data.data.reference}`, JSON.stringify({
+                        gameId: gameId,
+                        gameName: gameName,
+                        plan: plan,
+                        price: montant,
+                        userId: userId,
+                        productCode: productCode
+                    }));
+                    
+                    // Rediriger vers Paystack
+                    window.location.href = data.data.authorization_url;
+                    
+                    return true;
+                } else {
+                    throw new Error(data.message || 'Erreur lors de la création du paiement');
+                }
+            } catch (error) {
+                console.error('Erreur paiement sécurisé:', error);
+                showNotification(
+                    'Erreur de paiement',
+                    'Impossible d\'initialiser le paiement. Veuillez réessayer.',
+                    'error',
+                    4000
+                );
+                return false;
+            }
+        }
+
+        // Fonction pour vérifier un paiement récent
+        async function verifierPaiementRecent() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const reference = urlParams.get('reference');
+            const trxref = urlParams.get('trxref');
+            
+            const paymentRef = reference || trxref;
+            
+            if (paymentRef && paymentRef !== 'true') {
+                console.log(`🔍 Vérification du paiement avec référence: ${paymentRef}`);
+                
+                try {
+                    // 1. Vérifier avec Paystack via votre backend sécurisé
+                    const response = await fetch(`${PAYSTACK_BACKEND_URL}/verify-payment/${paymentRef}`);
+                    const result = await response.json();
+                    
+                    if (result.status === 'success') {
+                        // 2. Récupérer les VRAIES données depuis localStorage
+                        const storedDataKey = `pending_purchase_${paymentRef}`;
+                        const storedData = localStorage.getItem(storedDataKey);
+                        
+                        if (storedData) {
+                            const purchaseData = JSON.parse(storedData);
+                            
+                            // Vérifier si l'achat n'a pas déjà été enregistré
+                            const existingLicense = await window.checkGameLicense(purchaseData.gameId);
+                            
+                            if (!existingLicense.hasLicense) {
+                                // 3. Enregistrer dans VOTRE backend GameHub (Firebase)
+                                const registerResponse = await fetch(`${GAMEHUB_BACKEND_URL}/record-purchase`, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                    },
+                                    body: JSON.stringify({
+                                        userId: purchaseData.userId,
+                                        userEmail: window.auth.currentUser?.email || '',
+                                        gameId: purchaseData.gameId,
+                                        gameName: purchaseData.gameName,
+                                        plan: purchaseData.plan,
+                                        price: purchaseData.price,
+                                        paystackReference: paymentRef
+                                    })
+                                });
+                                
+                                const registerResult = await registerResponse.json();
+                                
+                                if (registerResult.status) {
+                                    // SUCCÈS - Achat enregistré dans Firebase
+                                    showNotification(
+                                        '🎉 Paiement réussi !',
+                                        `Votre achat de ${purchaseData.gameName} a été confirmé.`,
+                                        'success',
+                                        6000
+                                    );
+                                    
+                                    // Marquer le jeu comme acheté
+                                    const gameCard = document.querySelector(`[data-game-id="${purchaseData.gameId}"]`);
+                                    if (gameCard) {
+                                        const expirationDate = new Date();
+                                        switch(purchaseData.plan) {
+                                            case 'trial':
+                                                expirationDate.setHours(expirationDate.getHours() + 1);
+                                                break;
+                                            case 'daily':
+                                                expirationDate.setDate(expirationDate.getDate() + 1);
+                                                break;
+                                            case 'weekly':
+                                                expirationDate.setDate(expirationDate.getDate() + 7);
+                                                break;
+                                            case 'monthly':
+                                                expirationDate.setMonth(expirationDate.getMonth() + 1);
+                                                break;
+                                        }
+                                        window.markGameAsPurchased(gameCard, expirationDate);
+                                    }
+                                }
+                            } else {
+                                showNotification(
+                                    'Achat déjà enregistré',
+                                    'Cet achat a déjà été traité et enregistré.',
+                                    'info',
+                                    4000
+                                );
+                            }
+                            
+                            // 4. Nettoyer localStorage
+                            localStorage.removeItem(storedDataKey);
+                        }
+                        
+                        // 5. Nettoyer l'URL
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                        
+                        // 6. Recharger les achats pour mettre à jour l'interface
+                        if (window.checkAllPurchasedGames) {
+                            await window.checkAllPurchasedGames();
+                        }
+                        
+                    } else {
+                        showNotification(
+                            'Paiement non confirmé',
+                            'Le paiement n\'a pas pu être vérifié. Si vous avez été débité, contactez le support.',
+                            'warning',
+                            5000
+                        );
+                    }
+                } catch (error) {
+                    console.error('Erreur vérification paiement:', error);
+                    showNotification(
+                        'Erreur de vérification',
+                        'Impossible de vérifier le statut du paiement. Veuillez réessayer.',
+                        'error',
+                        4000
+                    );
+                }
+            }
+        }
+
+        // Fermer la modale en cliquant à l'extérieur
+        document.getElementById('subscriptionModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeSubscriptionModal();
+            }
+        });
+
+        document.getElementById('paystackModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closePaystackModal();
+            }
+        });
+
+        // Ajouter les événements de clic aux cartes de jeu
+        document.querySelectorAll('.game-card').forEach(card => {
+            card.addEventListener('click', function(e) {
+                const gameId = this.getAttribute('data-game-id');
+                if (!gameId) return;
+                
+                // Vérifier si le jeu est déjà acheté (présence du badge)
+                const purchasedBadge = card.querySelector('.purchased-badge');
+                
+                if (purchasedBadge && purchasedBadge.style.display !== 'none') {
+                    // Si déjà acheté, montrer les détails du jeu
+                    showGameDetails(gameId);
+                } else {
+                    // Si pas encore acheté, ouvrir directement la modale d'achat
+                    showSubscriptionModal(gameId);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

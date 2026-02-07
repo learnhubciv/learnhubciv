@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tutoriels - GameHub</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Styles existants conservés et adaptés */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #8A2BE2;
+            --primary-dark: #6A1BB2;
+            --secondary: #FF6B6B;
+            --accent: #00D4FF;
+            --dark: #1A1A2E;
+            --light: #F8F9FA;
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --text: #333333;
+            --text-light: #6C757D;
+            --success: #28A745;
+            --warning: #FFC107;
+            --expired: #DC3545;
+            --shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            --radius: 12px;
+            --transition: all 0.3s ease;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #1A1A2E 0%, #16213E 50%, #0F3460 100%);
+            color: var(--light);
+            min-height: 100vh;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .app-container {
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 0 0 80px;
+        }
+
+        /* Header */
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 15px 10px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(26, 26, 46, 0.9);
+            backdrop-filter: blur(10px);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .logo-text {
+            font-size: 1.3rem;
+            font-weight: 700;
+            background: linear-gradient(to right, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .user-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .icon-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: var(--light);
+            transition: var(--transition);
+        }
+
+        .icon-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        /* Page Header */
+        .page-header {
+            padding: 25px 15px 15px;
+            text-align: center;
+            position: relative;
+        }
+
+        .page-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(to right, transparent, rgba(0, 212, 255, 0.5), transparent);
+        }
+
+        .page-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            background: linear-gradient(to right, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            position: relative;
+            display: inline-block;
+        }
+
+        .page-title::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 25%;
+            right: 25%;
+            height: 3px;
+            background: linear-gradient(to right, var(--primary), var(--accent));
+            border-radius: 3px;
+        }
+
+        .page-subtitle {
+            font-size: 1rem;
+            color: var(--text-light);
+            max-width: 600px;
+            margin: 0 auto 20px;
+            line-height: 1.5;
+        }
+
+        /* Stats Bar */
+        .stats-bar {
+            display: flex;
+            justify-content: space-around;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: var(--radius);
+            padding: 15px;
+            margin: 0 15px 25px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--text-light);
+            text-align: center;
+        }
+
+        /* Tutorials Grid */
+        .tutorials-section {
+            padding: 0 15px 30px;
+        }
+
+        .section-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title i {
+            color: var(--accent);
+        }
+
+        .tutorials-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        @media (min-width: 768px) {
+            .tutorials-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 25px;
+            }
+        }
+
+        @media (min-width: 1200px) {
+            .tutorials-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        .tutorial-card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+            cursor: pointer;
+        }
+
+        .tutorial-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .tutorial-video {
+            position: relative;
+            width: 100%;
+            height: 180px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            overflow: hidden;
+        }
+
+        .video-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }
+
+        .tutorial-card:hover .video-overlay {
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .play-button {
+            width: 60px;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: var(--primary);
+            transition: var(--transition);
+            transform: scale(0.9);
+        }
+
+        .tutorial-card:hover .play-button {
+            transform: scale(1);
+            background: white;
+        }
+
+        .tutorial-duration {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+        }
+
+        .tutorial-info {
+            padding: 20px;
+        }
+
+        .tutorial-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .tutorial-category {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .tutorial-level {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.8rem;
+            color: var(--text-light);
+        }
+
+        .level-badge {
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .level-beginner {
+            background: rgba(40, 167, 69, 0.15);
+            color: var(--success);
+        }
+
+        .level-intermediate {
+            background: rgba(255, 193, 7, 0.15);
+            color: var(--warning);
+        }
+
+        .level-advanced {
+            background: rgba(220, 53, 69, 0.15);
+            color: var(--expired);
+        }
+
+        .tutorial-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 8px;
+            line-height: 1.3;
+        }
+
+        .tutorial-description {
+            font-size: 0.9rem;
+            color: var(--text-light);
+            margin-bottom: 15px;
+            line-height: 1.4;
+        }
+
+        .tutorial-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid rgba(0, 0, 0, 0.05);
+            padding-top: 15px;
+        }
+
+        .tutorial-author {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .author-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            color: white;
+        }
+
+        .author-name {
+            font-size: 0.85rem;
+            color: var(--text);
+            font-weight: 500;
+        }
+
+        .tutorial-views {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.8rem;
+            color: var(--text-light);
+        }
+
+        /* Featured Section */
+        .featured-section {
+            padding: 0 15px 30px;
+        }
+
+        .featured-tutorial {
+            background: linear-gradient(135deg, rgba(138, 43, 226, 0.1), rgba(0, 212, 255, 0.05));
+            border-radius: var(--radius);
+            padding: 25px;
+            border: 1px solid rgba(138, 43, 226, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .featured-badge {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: var(--secondary);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            z-index: 2;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(255, 107, 107, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(255, 107, 107, 0);
+            }
+        }
+
+        .featured-content {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            position: relative;
+            z-index: 2;
+        }
+
+        @media (min-width: 768px) {
+            .featured-content {
+                flex-direction: row;
+                align-items: center;
+            }
+        }
+
+        .featured-video {
+            flex: 1;
+            height: 200px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border-radius: var(--radius);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .featured-info {
+            flex: 2;
+            padding: 10px 0;
+        }
+
+        @media (min-width: 768px) {
+            .featured-info {
+                padding: 0 0 0 25px;
+            }
+        }
+
+        .featured-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--light);
+            margin-bottom: 10px;
+        }
+
+        .featured-desc {
+            font-size: 1rem;
+            color: var(--text-light);
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+
+        .featured-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            padding: 12px 25px;
+            border-radius: 50px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            border: none;
+            font-size: 1rem;
+        }
+
+        .featured-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(138, 43, 226, 0.3);
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(26, 26, 46, 0.95);
+            backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: space-around;
+            padding: 12px 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 100;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: var(--text-light);
+            font-size: 11px;
+            transition: var(--transition);
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .nav-item.active {
+            color: var(--accent);
+        }
+
+        .nav-icon {
+            font-size: 18px;
+        }
+
+        /* Video Modal */
+        .video-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            padding: 20px;
+            opacity: 0;
+            visibility: hidden;
+            transition: var(--transition);
+        }
+
+        .video-modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .video-modal {
+            background: var(--dark);
+            border-radius: var(--radius);
+            width: 100%;
+            max-width: 900px;
+            max-height: 90vh;
+            overflow: hidden;
+            transform: scale(0.9);
+            transition: var(--transition);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .video-modal-overlay.active .video-modal {
+            transform: scale(1);
+        }
+
+        .video-modal-header {
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .video-modal-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--light);
+        }
+
+        .video-modal-close {
+            background: rgba(255, 255, 255, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+            border: none;
+            color: var(--light);
+            font-size: 1.1rem;
+        }
+
+        .video-modal-close:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: rotate(90deg);
+        }
+
+        .video-modal-content {
+            padding: 0;
+            position: relative;
+        }
+
+        .video-placeholder {
+            width: 100%;
+            height: 400px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            gap: 15px;
+        }
+
+        .video-placeholder-icon {
+            font-size: 4rem;
+            opacity: 0.8;
+        }
+
+        .video-placeholder-text {
+            font-size: 1.2rem;
+            font-weight: 600;
+            text-align: center;
+            max-width: 400px;
+            line-height: 1.4;
+        }
+
+        .video-modal-footer {
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .video-modal-desc {
+            color: var(--text-light);
+            line-height: 1.5;
+            margin-bottom: 15px;
+        }
+
+        .video-modal-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+            color: var(--text-light);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .page-title {
+                font-size: 1.7rem;
+            }
+            
+            .stats-bar {
+                padding: 12px;
+                margin: 0 10px 20px;
+            }
+            
+            .stat-value {
+                font-size: 1.3rem;
+            }
+            
+            .featured-tutorial {
+                padding: 20px;
+            }
+            
+            .featured-title {
+                font-size: 1.3rem;
+            }
+            
+            .video-placeholder {
+                height: 250px;
+            }
+            
+            .video-placeholder-icon {
+                font-size: 3rem;
+            }
+            
+            .video-placeholder-text {
+                font-size: 1rem;
+                padding: 0 15px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .page-header {
+                padding: 20px 10px 15px;
+            }
+            
+            .page-title {
+                font-size: 1.5rem;
+            }
+            
+            .page-subtitle {
+                font-size: 0.9rem;
+                padding: 0 10px;
+            }
+            
+            .tutorials-section,
+            .featured-section {
+                padding-left: 10px;
+                padding-right: 10px;
+            }
+            
+            .featured-tutorial {
+                padding: 15px;
+            }
+            
+            .featured-badge {
+                top: 10px;
+                right: 10px;
+                font-size: 0.7rem;
+                padding: 4px 12px;
+            }
+            
+            .bottom-nav {
+                padding: 10px 0;
+            }
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-in {
+            animation: fadeInUp 0.6s ease forwards;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo" onclick="window.location.href='accueil.html'">
+                <div class="logo-icon">
+                    <i class="fas fa-dice"></i>
+                </div>
+                <div class="logo-text">GameHub</div>
+            </div>
+            <div class="user-actions">
+                <div class="icon-btn" onclick="window.location.href='profil.html'">
+                    <i class="fas fa-user"></i>
+                </div>
+            </div>
+        </header>
+
+        <!-- Page Header -->
+        <section class="page-header">
+            <h1 class="page-title animate-in">Tutoriels Vidéo</h1>
+            <p class="page-subtitle animate-in">
+                Maîtrisez tous les systèmes avec nos 3 tutoriels vidéo complets. 
+                Apprenez une fois, appliquez partout - PREDICTOR, Hack et Montante.
+            </p>
+        </section>
+
+        <!-- Stats Bar -->
+        <div class="stats-bar animate-in">
+            <div class="stat-item">
+                <div class="stat-value">3</div>
+                <div class="stat-label">Tutoriels</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">2h30</div>
+                <div class="stat-label">de contenu</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">100%</div>
+                <div class="stat-label">Pratique</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">★ 5.0</div>
+                <div class="stat-label">Évaluation</div>
+            </div>
+        </div>
+
+        <!-- Featured Tutorial -->
+        <section class="featured-section animate-in">
+            <h2 class="section-title">
+                <i class="fas fa-star"></i>
+                Tutoriel principal
+            </h2>
+            <div class="featured-tutorial">
+                <div class="featured-badge">SYSTÈME COMPLET</div>
+                <div class="featured-content">
+                    <div class="featured-video" onclick="openVideoModal('systeme-predictor')">
+                        <div class="video-overlay">
+                            <div class="play-button">
+                                <i class="fas fa-play"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="featured-info">
+                        <h3 class="featured-title">Système PREDICTOR - Méthode Universelle</h3>
+                        <p class="featured-desc">
+                            Le système PREDICTOR fonctionne de la même manière sur tous les jeux et bookmakers. 
+                            Apprenez une seule fois cette méthode et appliquez-la partout pour des résultats constants.
+                        </p>
+                        <button class="featured-button" onclick="openVideoModal('systeme-predictor')">
+                            <i class="fas fa-play-circle"></i>
+                            Voir le tutoriel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tutorials Grid -->
+        <section class="tutorials-section">
+            <h2 class="section-title animate-in">
+                <i class="fas fa-video"></i>
+                Tous les systèmes
+            </h2>
+            <div class="tutorials-grid" id="tutorialsGrid">
+                <!-- Les 3 tutoriels seront générés dynamiquement -->
+            </div>
+        </section>
+
+        <!-- Video Modal -->
+        <div class="video-modal-overlay" id="videoModal">
+            <div class="video-modal">
+                <div class="video-modal-header">
+                    <h3 class="video-modal-title" id="videoModalTitle">Tutoriel</h3>
+                    <button class="video-modal-close" onclick="closeVideoModal()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="video-modal-content">
+                    <div class="video-placeholder" id="videoPlaceholder">
+                        <i class="fas fa-play-circle video-placeholder-icon"></i>
+                        <div class="video-placeholder-text" id="videoPlaceholderText">
+                            Le tutoriel vidéo s'affichera ici
+                        </div>
+                    </div>
+                </div>
+                <div class="video-modal-footer">
+                    <p class="video-modal-desc" id="videoModalDesc">
+                        Description du tutoriel vidéo
+                    </p>
+                    <div class="video-modal-meta">
+                        <div class="tutorial-author">
+                            <div class="author-avatar">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <span class="author-name" id="videoAuthor">Expert GameHub</span>
+                        </div>
+                        <div class="tutorial-views">
+                            <i class="fas fa-eye"></i>
+                            <span id="videoViews">1,254 vues</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+        <a href="accueil.html" class="nav-item">
+            <i class="fas fa-home nav-icon"></i>
+            <span>Accueil</span>
+        </a>
+        <a href="jeux.html" class="nav-item">
+            <i class="fas fa-gamepad nav-icon"></i>
+            <span>Mes Jeux</span>
+        </a>
+        <a href="tutoriel.html" class="nav-item active">
+            <i class="fas fa-video nav-icon"></i>
+            <span>Tutoriels</span>
+        </a>
+        <a href="forum.html" class="nav-item">
+            <i class="fas fa-comments nav-icon"></i>
+            <span>Forum</span>
+        </a>
+        <a href="profil.html" class="nav-item">
+            <i class="fas fa-user nav-icon"></i>
+            <span>Profil</span>
+        </a>
+    </nav>
+
+    <script>
+        // Données simplifiées - seulement 3 tutoriels
+        const tutorialsData = [
+            {
+                id: 'systeme-predictor',
+                title: 'Système PREDICTOR - Méthode Universelle',
+                description: 'Le système PREDICTOR fonctionne de la même manière sur tous les jeux et bookmakers. Apprenez cette méthode une fois et appliquez-la partout pour des résultats constants et fiables.',
+                variant: 'PREDICTOR',
+                level: 'intermediate',
+                duration: '45:30',
+                author: 'Expert Team',
+                views: '8,421',
+                featured: true
+            },
+            {
+                id: 'systeme-hack',
+                title: 'Système HACK - Techniques Essentielles',
+                description: 'Toutes les techniques HACK fonctionnent sur le même principe. Maîtrisez ce système unique et appliquez-le à tous vos jeux pour optimiser vos performances.',
+                variant: 'HACK',
+                level: 'advanced',
+                duration: '38:15',
+                author: 'Expert Team',
+                views: '6,543'
+            },
+            {
+                id: 'systeme-montante',
+                title: 'Système MONTANTE - Stratégie Gagnante',
+                description: 'La méthode MONTANTE est universelle et fonctionne sur toutes les plateformes. Apprenez cette stratégie une fois et maximisez vos gains partout.',
+                variant: 'MONTANTE',
+                level: 'intermediate',
+                duration: '42:20',
+                author: 'Expert Team',
+                views: '7,210'
+            }
+        ];
+
+        // Variables globales
+        let currentVideo = null;
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            // Animer les éléments au chargement
+            animateElements();
+            
+            // Charger les tutoriels
+            loadTutorials();
+            
+            // Configurer les événements
+            setupEvents();
+        });
+
+        // Animation des éléments
+        function animateElements() {
+            const elements = document.querySelectorAll('.animate-in');
+            elements.forEach((element, index) => {
+                element.style.animationDelay = `${index * 0.1}s`;
+            });
+        }
+
+        // Charger les tutoriels
+        function loadTutorials() {
+            const container = document.getElementById('tutorialsGrid');
+            if (!container) return;
+            
+            // Générer les cartes
+            container.innerHTML = '';
+            
+            tutorialsData.forEach(tutorial => {
+                if (tutorial.featured) return; // Ne pas afficher le tutoriel featured dans la grille
+                
+                const card = document.createElement('div');
+                card.className = 'tutorial-card animate-in';
+                card.onclick = () => openVideoModal(tutorial.id);
+                
+                // Déterminer la couleur du niveau
+                let levelClass = '';
+                let levelText = '';
+                switch(tutorial.level) {
+                    case 'beginner':
+                        levelClass = 'level-beginner';
+                        levelText = 'Débutant';
+                        break;
+                    case 'intermediate':
+                        levelClass = 'level-intermediate';
+                        levelText = 'Intermédiaire';
+                        break;
+                    case 'advanced':
+                        levelClass = 'level-advanced';
+                        levelText = 'Avancé';
+                        break;
+                }
+                
+                card.innerHTML = `
+                    <div class="tutorial-video">
+                        <div class="video-overlay">
+                            <div class="play-button">
+                                <i class="fas fa-play"></i>
+                            </div>
+                        </div>
+                        <div class="tutorial-duration">${tutorial.duration}</div>
+                    </div>
+                    <div class="tutorial-info">
+                        <div class="tutorial-meta">
+                            <div class="tutorial-category">
+                                <i class="fas fa-cogs"></i> ${tutorial.variant}
+                            </div>
+                            <div class="tutorial-level">
+                                <span class="level-badge ${levelClass}">${levelText}</span>
+                            </div>
+                        </div>
+                        <h4 class="tutorial-title">${tutorial.title}</h4>
+                        <p class="tutorial-description">${tutorial.description}</p>
+                        <div class="tutorial-footer">
+                            <div class="tutorial-author">
+                                <div class="author-avatar">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                                <span class="author-name">${tutorial.author}</span>
+                            </div>
+                            <div class="tutorial-views">
+                                <i class="fas fa-eye"></i>
+                                <span>${tutorial.views} vues</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                container.appendChild(card);
+            });
+        }
+
+        // Ouvrir la modale vidéo
+        function openVideoModal(tutorialId) {
+            const tutorial = tutorialsData.find(t => t.id === tutorialId);
+            if (!tutorial) return;
+            
+            currentVideo = tutorial;
+            
+            // Mettre à jour les informations de la modale
+            document.getElementById('videoModalTitle').textContent = tutorial.title;
+            document.getElementById('videoModalDesc').textContent = tutorial.description;
+            document.getElementById('videoAuthor').textContent = tutorial.author;
+            document.getElementById('videoViews').textContent = `${tutorial.views} vues`;
+            
+            // Mettre à jour le placeholder
+            const placeholderText = document.getElementById('videoPlaceholderText');
+            if (placeholderText) {
+                placeholderText.textContent = `Tutoriel Système ${tutorial.variant}`;
+            }
+            
+            // Afficher la modale
+            document.getElementById('videoModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        // Fermer la modale vidéo
+        function closeVideoModal() {
+            document.getElementById('videoModal').classList.remove('active');
+            document.body.style.overflow = 'auto';
+            currentVideo = null;
+        }
+
+        // Configurer les événements
+        function setupEvents() {
+            // Fermer la modale en cliquant à l'extérieur
+            document.getElementById('videoModal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeVideoModal();
+                }
+            });
+            
+            // Fermer la modale avec la touche Échap
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && document.getElementById('videoModal').classList.contains('active')) {
+                    closeVideoModal();
+                }
+            });
+            
+            // Navigation
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', function(e) {
+                    if (!this.getAttribute('href') || this.getAttribute('href') === '#') {
+                        e.preventDefault();
+                    }
+                });
+            });
+        }
+
+        // Retour à l'accueil
+        function goToHome() {
+            window.location.href = 'accueil.html';
+        }
+    </script>
+</body>
+</html>

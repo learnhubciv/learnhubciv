@@ -1,0 +1,3421 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forum - GameHub</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Import Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+        import { 
+            getAuth, 
+            onAuthStateChanged
+        } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
+        import { 
+            getFirestore,
+            collection,
+            addDoc,
+            query,
+            orderBy,
+            getDocs,
+            Timestamp,
+            doc,
+            getDoc,
+            updateDoc,
+            deleteDoc,
+            increment,
+            where
+        } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+        
+        // Configuration Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyDhySV3lXOlCQ8fMIYRlzs0YpMg6MZ_Ixo",
+            authDomain: "gamehub-e45ea.firebaseapp.com",
+            projectId: "gamehub-e45ea",
+            storageBucket: "gamehub-e45ea.firebasestorage.app",
+            messagingSenderId: "609288909968",
+            appId: "1:609288909968:web:45f3716ce6b2d4970d1415"
+        };
+
+        // Initialiser Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        
+        // Exposer l'auth et db globalement pour les fonctions
+        window.auth = auth;
+        window.db = db;
+        window.Timestamp = Timestamp;
+        
+        // Système de modération automatique amélioré
+        window.contentModeration = {
+            // Liste de mots injurieux/interdits
+            forbiddenWords: [
+                'pute', 'salope', 'connard', 'enculé', 'fuck', 'shit', 'bitch',
+                'asshole', 'bastard', 'dick', 'merde', 'putain', 'con', 'connasse',
+                'nique', 'ntm', 'pd', 'enculer', 'ta mère', 'fils de pute',
+                'crève', 'mort', 'suicide', 'débile', 'idiot', 'stupide', 'abruti',
+                'nègre', 'bamboula', 'youpin', 'bicot', 'bougnoule', 'race'
+            ],
+            
+            // Regex pour détecter les éléments interdits - AMÉLIORÉ POUR DÉTECTER LES CONTOURNEMENTS
+            patterns: {
+                // Détection améliorée des numéros avec différents formats
+                phone: /(?:(?:\+|00)\d{1,3}[\s-]?)?(?:\(?\d{1,4}\)?[\s-]?)?(?:\d{1,4}[\s.-]?){2,}\d{1,4}/g,
+                url: /(https?:\/\/[^\s]+|www\.[^\s]+)/gi,
+                whatsapp: /(whatsapp|wa\.me|wa\/)/gi,
+                telegram: /(telegram|t\.me|tlgrm)/gi,
+                instagram: /(instagram|instagr\.am|ig\.me)/gi,
+                youtube: /(youtube|youtu\.be)/gi,
+                tiktok: /(tiktok|tiktok\.com)/gi,
+                discord: /(discord|discord\.gg|discordapp\.com)/gi,
+                email: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,
+                crypto: /(bitcoin|btc|ethereum|eth|usdt|crypto|wallet)/gi,
+                paypal: /(paypal|pay\.pal)/gi,
+                onlyfans: /(onlyfans|only\.fans)/gi,
+                // Détection des tentatives de contournement
+                splitNumbers: /(\d\s*[\n\r]\s*\d)/gi
+            },
+            
+            // Nouvelle fonction pour détecter les numéros découpés
+            detectSplitNumbers: function(text) {
+                // Normaliser le texte: remplacer tous les séparateurs par des espaces
+                let normalized = text.replace(/[\n\r\t.,;]/g, ' ');
+                // Rassembler les chiffres séparés
+                normalized = normalized.replace(/(\d)\s+(\d)/g, '$1$2');
+                
+                // Vérifier les séquences de 10 chiffres ou plus (numéros de téléphone)
+                const phoneRegex = /(\d{10,})/g;
+                const matches = normalized.match(phoneRegex);
+                
+                return matches ? matches.filter(num => num.length >= 10) : [];
+            },
+            
+            // Détection avancée des numéros avec tous les formats
+            detectAllPhoneNumbers: function(text) {
+                const numbers = [];
+                
+                // 1. Détection par regex standard
+                const standardMatches = text.match(this.patterns.phone);
+                if (standardMatches) numbers.push(...standardMatches);
+                
+                // 2. Détection des numéros découpés
+                const splitNumbers = this.detectSplitNumbers(text);
+                numbers.push(...splitNumbers);
+                
+                // 3. Détection des numéros écrits en lettres (ex: "zéro cinq")
+                const numberWords = {
+                    'zéro': '0', 'zero': '0', 'un': '1', 'deux': '2', 'trois': '3',
+                    'quatre': '4', 'cinq': '5', 'six': '6', 'sept': '7', 'huit': '8',
+                    'neuf': '9', 'dix': '10'
+                };
+                
+                // Chercher les combinaisons de mots-nombres
+                const words = text.toLowerCase().split(/\s+/);
+                let currentNumber = '';
+                
+                for (let i = 0; i < words.length; i++) {
+                    const word = words[i].replace(/[^a-zàâäéèêëîïôöùûüÿç]/g, '');
+                    if (numberWords[word]) {
+                        currentNumber += numberWords[word];
+                    } else if (currentNumber.length >= 10) {
+                        numbers.push(currentNumber);
+                        currentNumber = '';
+                    } else {
+                        currentNumber = '';
+                    }
+                }
+                
+                if (currentNumber.length >= 10) {
+                    numbers.push(currentNumber);
+                }
+                
+                // Filtrer les doublons et nettoyer
+                return [...new Set(numbers.filter(n => n.length >= 10))];
+            },
+            
+            // Fonction pour vérifier si le contenu contient des éléments interdits
+            checkContent: function(text) {
+                const violations = [];
+                const sanitizedText = text.toLowerCase();
+                
+                // Vérifier les mots interdits
+                this.forbiddenWords.forEach(word => {
+                    const regex = new RegExp(`\\b${word}\\b`, 'gi');
+                    if (regex.test(text)) {
+                        violations.push({
+                            type: 'inappropriate_language',
+                            message: 'Langage inapproprié détecté'
+                        });
+                    }
+                });
+                
+                // Détection avancée des numéros de téléphone
+                const phoneNumbers = this.detectAllPhoneNumbers(text);
+                if (phoneNumbers.length > 0) {
+                    violations.push({
+                        type: 'phone',
+                        message: `Numéro(s) de téléphone détecté(s): ${phoneNumbers.slice(0, 3).join(', ')}${phoneNumbers.length > 3 ? '...' : ''}`,
+                        matches: phoneNumbers
+                    });
+                }
+                
+                // Vérifier les patterns regex restants
+                for (const [type, pattern] of Object.entries(this.patterns)) {
+                    if (type === 'phone' || type === 'splitNumbers') continue; // Déjà traité
+                    
+                    const matches = text.match(pattern);
+                    if (matches && matches.length > 0) {
+                        const labels = {
+                            url: 'Lien URL',
+                            whatsapp: 'Lien WhatsApp',
+                            telegram: 'Lien Telegram',
+                            instagram: 'Lien Instagram',
+                            youtube: 'Lien YouTube',
+                            tiktok: 'Lien TikTok',
+                            discord: 'Lien Discord',
+                            email: 'Adresse email',
+                            crypto: 'Référence cryptomonnaie',
+                            paypal: 'Lien PayPal',
+                            onlyfans: 'Lien OnlyFans'
+                        };
+                        
+                        violations.push({
+                            type: type,
+                            message: `${labels[type] || type} détecté(e)`,
+                            matches: matches
+                        });
+                    }
+                    
+                    // Réinitialiser le dernierIndex du regex
+                    pattern.lastIndex = 0;
+                }
+                
+                return violations;
+            },
+            
+            // Fonction pour flouter/cacher le contenu sensible
+            sanitizeContent: function(text) {
+                let sanitized = text;
+                
+                // Détecter et remplacer les numéros de téléphone
+                const phoneNumbers = this.detectAllPhoneNumbers(text);
+                phoneNumbers.forEach(phone => {
+                    const escapedPhone = phone.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const regex = new RegExp(escapedPhone, 'g');
+                    sanitized = sanitized.replace(regex, '[NUMÉRO CACHÉ]');
+                });
+                
+                // Remplacer les URLs
+                sanitized = sanitized.replace(this.patterns.url, '[LIEN BLOQUÉ]');
+                
+                // Remplacer les liens spécifiques
+                sanitized = sanitized.replace(this.patterns.whatsapp, '[WHATSAPP BLOQUÉ]');
+                sanitized = sanitized.replace(this.patterns.telegram, '[TELEGRAM BLOQUÉ]');
+                sanitized = sanitized.replace(this.patterns.instagram, '[INSTAGRAM BLOQUÉ]');
+                sanitized = sanitized.replace(this.patterns.youtube, '[YOUTUBE BLOQUÉ]');
+                sanitized = sanitized.replace(this.patterns.tiktok, '[TIKTOK BLOQUÉ]');
+                sanitized = sanitized.replace(this.patterns.discord, '[DISCORD BLOQUÉ]');
+                sanitized = sanitized.replace(this.patterns.paypal, '[PAYPAL BLOQUÉ]');
+                sanitized = sanitized.replace(this.patterns.onlyfans, '[ONLYFANS BLOQUÉ]');
+                
+                // Remplacer les emails
+                sanitized = sanitized.replace(this.patterns.email, '[EMAIL CACHÉ]');
+                
+                // Remplacer les mots injurieux
+                this.forbiddenWords.forEach(word => {
+                    const regex = new RegExp(`\\b${word}\\b`, 'gi');
+                    sanitized = sanitized.replace(regex, '****');
+                });
+                
+                return sanitized;
+            },
+            
+            // Fonction pour traiter un nouveau sujet
+            moderateTopic: async function(title, content, userId) {
+                const violations = [];
+                
+                // Vérifier le titre
+                const titleViolations = this.checkContent(title);
+                if (titleViolations.length > 0) {
+                    violations.push(...titleViolations.map(v => `Titre: ${v.message}`));
+                }
+                
+                // Vérifier le contenu
+                const contentViolations = this.checkContent(content);
+                if (contentViolations.length > 0) {
+                    violations.push(...contentViolations.map(v => `Message: ${v.message}`));
+                }
+                
+                if (violations.length > 0) {
+                    // Sanitizer le contenu
+                    const sanitizedTitle = this.sanitizeContent(title);
+                    const sanitizedContent = this.sanitizeContent(content);
+                    
+                    // Enregistrer la tentative de violation
+                    await this.logViolation(userId, violations, {
+                        originalTitle: title,
+                        originalContent: content,
+                        sanitizedTitle: sanitizedTitle,
+                        sanitizedContent: sanitizedContent
+                    });
+                    
+                    return {
+                        approved: false,
+                        violations: violations,
+                        sanitizedTitle: sanitizedTitle,
+                        sanitizedContent: sanitizedContent,
+                        requiresManualReview: violations.some(v => 
+                            v.includes('inapproprié') || v.includes('cryptomonnaie') || v.includes('OnlyFans')
+                        )
+                    };
+                }
+                
+                return {
+                    approved: true,
+                    violations: []
+                };
+            },
+            
+            // Fonction pour enregistrer les violations
+            logViolation: async function(userId, violations, contentData) {
+                try {
+                    await addDoc(collection(db, 'moderation_logs'), {
+                        userId: userId,
+                        violations: violations,
+                        originalTitle: contentData.originalTitle,
+                        originalContent: contentData.originalContent,
+                        sanitizedTitle: contentData.sanitizedTitle,
+                        sanitizedContent: contentData.sanitizedContent,
+                        timestamp: Timestamp.now(),
+                        action: 'auto_moderated',
+                        status: 'pending_review'
+                    });
+                    
+                    // Mettre à jour le compteur de violations de l'utilisateur
+                    const userRef = doc(db, 'users', userId);
+                    const userDoc = await getDoc(userRef);
+                    
+                    if (userDoc.exists()) {
+                        const userData = userDoc.data();
+                        const violationCount = (userData.violationCount || 0) + 1;
+                        
+                        await updateDoc(userRef, {
+                            violationCount: violationCount,
+                            lastViolation: Timestamp.now(),
+                            needsReview: violationCount >= 3
+                        });
+                        
+                        // Si l'utilisateur a trop de violations, le flagger
+                        if (violationCount >= 5) {
+                            await this.flagUser(userId, 'too_many_violations');
+                        }
+                    }
+                } catch (error) {
+                    console.error('Erreur lors de l\'enregistrement de la violation:', error);
+                }
+            },
+            
+            // Fonction pour flagger un utilisateur
+            flagUser: async function(userId, reason) {
+                try {
+                    await updateDoc(doc(db, 'users', userId), {
+                        isFlagged: true,
+                        flagReason: reason,
+                        flaggedAt: Timestamp.now()
+                    });
+                    
+                    // Créer une alerte pour les modérateurs
+                    await addDoc(collection(db, 'moderator_alerts'), {
+                        userId: userId,
+                        reason: reason,
+                        priority: 'high',
+                        createdAt: Timestamp.now(),
+                        status: 'pending'
+                    });
+                } catch (error) {
+                    console.error('Erreur lors du flag de l\'utilisateur:', error);
+                }
+            }
+        };
+
+        // Ajouter une fonction pour afficher l'avertissement de modération
+        window.showModerationWarning = function(message, filteredTitle, filteredContent) {
+            return new Promise((resolve) => {
+                const modalId = 'moderationWarningModal';
+                let existingModal = document.getElementById(modalId);
+                
+                if (existingModal) {
+                    existingModal.remove();
+                }
+                
+                const modalHTML = `
+                    <div class="modal-overlay active" id="${modalId}">
+                        <div class="new-topic-modal">
+                            <div class="modal-header" style="background: linear-gradient(135deg, var(--warning), #ff9800);">
+                                <button class="modal-close" id="closeModerationWarning">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                                <h2 class="modal-title">Contenu détecté</h2>
+                                <p class="modal-subtitle">Votre message contient des éléments interdits</p>
+                            </div>
+                            <div class="modal-body">
+                                <div class="form-group">
+                                    <div style="background: rgba(255, 193, 7, 0.1); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                                        <p style="color: var(--warning); font-weight: 600; margin-bottom: 10px;">
+                                            <i class="fas fa-exclamation-triangle"></i> Contenu interdit détecté
+                                        </p>
+                                        <p style="white-space: pre-line; color: var(--text); font-size: 14px;">${message}</p>
+                                    </div>
+                                    
+                                    <div style="margin-bottom: 20px;">
+                                        <label class="form-label">Titre filtré :</label>
+                                        <div style="background: #f5f5f5; padding: 12px; border-radius: 8px; border: 1px solid #ddd; font-size: 14px;">
+                                            ${filteredTitle}
+                                        </div>
+                                    </div>
+                                    
+                                    <div style="margin-bottom: 20px;">
+                                        <label class="form-label">Message filtré :</label>
+                                        <div style="background: #f5f5f5; padding: 12px; border-radius: 8px; border: 1px solid #ddd; max-height: 200px; overflow-y: auto; font-size: 14px;">
+                                            ${filteredContent}
+                                        </div>
+                                    </div>
+                                    
+                                    <div style="background: rgba(0, 212, 255, 0.1); padding: 15px; border-radius: 8px; margin-top: 20px;">
+                                        <p style="color: var(--accent); font-weight: 600;">
+                                            <i class="fas fa-info-circle"></i> Rappel des règles
+                                        </p>
+                                        <ul style="margin-top: 10px; padding-left: 20px; color: var(--text); font-size: 13px;">
+                                            <li>Les numéros de téléphone sont interdits (même avec des sauts de ligne)</li>
+                                            <li>Les liens externes (WhatsApp, Telegram, etc.) sont interdits</li>
+                                            <li>Le langage injurieux est interdit</li>
+                                            <li>Les publicités sont interdites</li>
+                                            <li>Les références à des plateformes de paiement sont interdites</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-actions">
+                                <button class="btn btn-secondary" id="cancelModeratedTopic">
+                                    Annuler la publication
+                                </button>
+                                <button class="btn btn-primary" id="confirmModeratedTopic" style="background: linear-gradient(135deg, var(--warning), #ff9800);">
+                                    <i class="fas fa-check-circle"></i> Publier le contenu filtré
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.insertAdjacentHTML('beforeend', modalHTML);
+                
+                const modal = document.getElementById(modalId);
+                const cancelBtn = document.getElementById('cancelModeratedTopic');
+                const confirmBtn = document.getElementById('confirmModeratedTopic');
+                const closeBtn = document.getElementById('closeModerationWarning');
+                
+                const closeModal = (result) => {
+                    modal.classList.remove('active');
+                    setTimeout(() => {
+                        modal.remove();
+                        resolve(result);
+                    }, 300);
+                };
+                
+                cancelBtn.addEventListener('click', () => closeModal(false));
+                confirmBtn.addEventListener('click', () => closeModal(true));
+                closeBtn.addEventListener('click', () => closeModal(false));
+                
+                // Fermer en cliquant à l'extérieur
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        closeModal(false);
+                    }
+                });
+                
+                // Fermer avec Échap
+                const handleEscape = (e) => {
+                    if (e.key === 'Escape' && modal.classList.contains('active')) {
+                        closeModal(false);
+                    }
+                };
+                
+                document.addEventListener('keydown', handleEscape);
+            });
+        };
+
+        // Fonction pour récupérer les données utilisateur
+        window.getUserData = async function(uid) {
+            try {
+                const userDocRef = doc(db, 'users', uid);
+                const userDoc = await getDoc(userDocRef);
+                
+                if (userDoc.exists()) {
+                    return userDoc.data();
+                } else {
+                    console.log('Aucun document utilisateur trouvé');
+                    return null;
+                }
+            } catch (error) {
+                console.error('Erreur lors de la récupération des données utilisateur:', error);
+                return null;
+            }
+        };
+        
+        // Fonction pour créer un nouveau sujet avec modération
+        window.createNewTopic = async function(title, content, category, gameId = null) {
+            try {
+                const user = auth.currentUser;
+                if (!user) {
+                    showNotification('Erreur', 'Vous devez être connecté pour créer un sujet', 'error', 4000);
+                    return false;
+                }
+                
+                // Vérification de modération
+                const moderationResult = await window.contentModeration.moderateTopic(title, content, user.uid);
+                
+                if (!moderationResult.approved) {
+                    // Afficher un message d'avertissement
+                    const violationMessages = moderationResult.violations
+                        .map((v, i) => `${i + 1}. ${v}`)
+                        .join('\n');
+                    
+                    const warningMessage = `Votre contenu contient des éléments interdits :\n\n${violationMessages}\n\nLe contenu a été automatiquement filtré.`;
+                    
+                    // Demander confirmation pour publier le contenu filtré
+                    const userConfirmed = await window.showModerationWarning(
+                        warningMessage, 
+                        moderationResult.sanitizedTitle, 
+                        moderationResult.sanitizedContent
+                    );
+                    
+                    if (!userConfirmed) {
+                        showNotification(
+                            'Publication annulée', 
+                            'Le sujet n\'a pas été publié car il contient du contenu interdit.', 
+                            'warning', 
+                            5000
+                        );
+                        return false;
+                    }
+                    
+                    // Utiliser le contenu filtré
+                    title = moderationResult.sanitizedTitle;
+                    content = moderationResult.sanitizedContent;
+                    
+                    // Si le contenu nécessite une revue manuelle
+                    if (moderationResult.requiresManualReview) {
+                        showNotification(
+                            'Attention', 
+                            'Votre sujet sera publié mais sera vérifié par un modérateur.', 
+                            'warning', 
+                            5000
+                        );
+                    }
+                }
+                
+                // Récupérer les données utilisateur
+                const userData = await window.getUserData(user.uid);
+                const username = userData?.username || user.email.split('@')[0];
+                
+                // Vérifier si l'utilisateur est flaggé
+                if (userData?.isFlagged) {
+                    showNotification(
+                        'Compte restreint', 
+                        'Votre compte a été restreint. Vous ne pouvez pas créer de nouveaux sujets.', 
+                        'error', 
+                        5000
+                    );
+                    return false;
+                }
+                
+                // Enregistrer le sujet dans la collection 'forum_topics'
+                const topicRef = await addDoc(collection(db, 'forum_topics'), {
+                    userId: user.uid,
+                    userEmail: user.email,
+                    username: username,
+                    title: title,
+                    content: content,
+                    category: category,
+                    gameId: gameId,
+                    createdAt: Timestamp.now(),
+                    updatedAt: Timestamp.now(),
+                    replies: 0,
+                    views: 0,
+                    likes: 0,
+                    isPinned: false,
+                    isClosed: false,
+                    moderated: !moderationResult.approved,
+                    moderationDate: !moderationResult.approved ? Timestamp.now() : null,
+                    originalContent: !moderationResult.approved ? content : null,
+                    canEdit: true, // L'utilisateur peut modifier son propre message
+                    canDelete: true // L'utilisateur peut supprimer son propre message
+                });
+                
+                console.log('Sujet créé avec succès:', topicRef.id);
+                
+                // Afficher un message de confirmation différent si modéré
+                if (!moderationResult.approved) {
+                    showNotification(
+                        'Sujet publié (filtré)', 
+                        'Votre sujet a été publié avec un contenu filtré pour respecter les règles.', 
+                        'info', 
+                        5000
+                    );
+                } else {
+                    showNotification(
+                        'Sujet publié', 
+                        'Votre sujet a été publié avec succès sur le forum.', 
+                        'success', 
+                        4000
+                    );
+                }
+                
+                return topicRef.id;
+                
+            } catch (error) {
+                console.error('Erreur lors de la création du sujet:', error);
+                showNotification('Erreur', 'Impossible de créer le sujet', 'error', 4000);
+                return false;
+            }
+        };
+
+        // Fonction pour modifier un sujet existant
+        window.editTopic = async function(topicId, newTitle, newContent) {
+            try {
+                const user = auth.currentUser;
+                if (!user) {
+                    showNotification('Erreur', 'Vous devez être connecté pour modifier un sujet', 'error', 4000);
+                    return false;
+                }
+
+                // Récupérer le sujet
+                const topicRef = doc(db, 'forum_topics', topicId);
+                const topicDoc = await getDoc(topicRef);
+                
+                if (!topicDoc.exists()) {
+                    showNotification('Erreur', 'Le sujet n\'existe pas', 'error', 4000);
+                    return false;
+                }
+                
+                const topic = topicDoc.data();
+                
+                // Vérifier que l'utilisateur est bien l'auteur
+                if (topic.userId !== user.uid) {
+                    showNotification('Erreur', 'Vous ne pouvez modifier que vos propres messages', 'error', 4000);
+                    return false;
+                }
+
+                // Vérification de modération sur le nouveau contenu
+                const moderationResult = await window.contentModeration.moderateTopic(newTitle, newContent, user.uid);
+                
+                let finalTitle = newTitle;
+                let finalContent = newContent;
+                let wasModerated = false;
+                
+                if (!moderationResult.approved) {
+                    // Avertir l'utilisateur
+                    const violationMessages = moderationResult.violations
+                        .map((v, i) => `${i + 1}. ${v}`)
+                        .join('\n');
+                    
+                    const warningMessage = `Votre nouveau contenu contient des éléments interdits :\n\n${violationMessages}\n\nLe contenu sera automatiquement filtré.`;
+                    
+                    // Demander confirmation
+                    const userConfirmed = await window.showModerationWarning(
+                        warningMessage, 
+                        moderationResult.sanitizedTitle, 
+                        moderationResult.sanitizedContent
+                    );
+                    
+                    if (!userConfirmed) {
+                        showNotification(
+                            'Modification annulée', 
+                            'La modification a été annulée car le contenu contient des éléments interdits.', 
+                            'warning', 
+                            5000
+                        );
+                        return false;
+                    }
+                    
+                    // Utiliser le contenu filtré
+                    finalTitle = moderationResult.sanitizedTitle;
+                    finalContent = moderationResult.sanitizedContent;
+                    wasModerated = true;
+                }
+
+                // Mettre à jour le sujet
+                await updateDoc(topicRef, {
+                    title: finalTitle,
+                    content: finalContent,
+                    updatedAt: Timestamp.now(),
+                    moderated: wasModerated || topic.moderated,
+                    moderationDate: wasModerated ? Timestamp.now() : topic.moderationDate,
+                    editHistory: topic.editHistory ? [...topic.editHistory, {
+                        previousTitle: topic.title,
+                        previousContent: topic.content,
+                        editedAt: Timestamp.now(),
+                        editedBy: user.uid
+                    }] : [{
+                        previousTitle: topic.title,
+                        previousContent: topic.content,
+                        editedAt: Timestamp.now(),
+                        editedBy: user.uid
+                    }]
+                });
+
+                showNotification(
+                    'Sujet modifié', 
+                    'Votre sujet a été modifié avec succès.', 
+                    'success', 
+                    4000
+                );
+
+                return true;
+
+            } catch (error) {
+                console.error('Erreur lors de la modification du sujet:', error);
+                showNotification('Erreur', 'Impossible de modifier le sujet', 'error', 4000);
+                return false;
+            }
+        };
+
+        // Fonction pour supprimer un sujet
+        window.deleteTopic = async function(topicId) {
+            try {
+                const user = auth.currentUser;
+                if (!user) {
+                    showNotification('Erreur', 'Vous devez être connecté pour supprimer un sujet', 'error', 4000);
+                    return false;
+                }
+
+                // Récupérer le sujet
+                const topicRef = doc(db, 'forum_topics', topicId);
+                const topicDoc = await getDoc(topicRef);
+                
+                if (!topicDoc.exists()) {
+                    showNotification('Erreur', 'Le sujet n\'existe pas', 'error', 4000);
+                    return false;
+                }
+                
+                const topic = topicDoc.data();
+                
+                // Vérifier que l'utilisateur est bien l'auteur
+                if (topic.userId !== user.uid) {
+                    showNotification('Erreur', 'Vous ne pouvez supprimer que vos propres messages', 'error', 4000);
+                    return false;
+                }
+
+                // Demander confirmation
+                const confirmed = await window.showDeleteConfirmation(topic.title);
+                if (!confirmed) {
+                    return false;
+                }
+
+                // Supprimer le sujet
+                await deleteDoc(topicRef);
+
+                // Enregistrer l'action de suppression
+                await addDoc(collection(db, 'deleted_topics_log'), {
+                    originalTopicId: topicId,
+                    userId: user.uid,
+                    username: topic.username,
+                    title: topic.title,
+                    content: topic.content,
+                    deletedAt: Timestamp.now(),
+                    reason: 'user_deleted'
+                });
+
+                showNotification(
+                    'Sujet supprimé', 
+                    'Votre sujet a été supprimé avec succès.', 
+                    'success', 
+                    4000
+                );
+
+                return true;
+
+            } catch (error) {
+                console.error('Erreur lors de la suppression du sujet:', error);
+                showNotification('Erreur', 'Impossible de supprimer le sujet', 'error', 4000);
+                return false;
+            }
+        };
+
+        // Fonction pour afficher la confirmation de suppression
+        window.showDeleteConfirmation = function(topicTitle) {
+            return new Promise((resolve) => {
+                const modalId = 'deleteConfirmationModal';
+                let existingModal = document.getElementById(modalId);
+                
+                if (existingModal) {
+                    existingModal.remove();
+                }
+                
+                const modalHTML = `
+                    <div class="modal-overlay active" id="${modalId}">
+                        <div class="new-topic-modal">
+                            <div class="modal-header" style="background: linear-gradient(135deg, var(--secondary), #ff4757);">
+                                <button class="modal-close" id="closeDeleteConfirmation">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                                <h2 class="modal-title">Confirmer la suppression</h2>
+                                <p class="modal-subtitle">Cette action est irréversible</p>
+                            </div>
+                            <div class="modal-body">
+                                <div class="form-group">
+                                    <div style="background: rgba(255, 107, 107, 0.1); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                                        <p style="color: var(--secondary); font-weight: 600; margin-bottom: 10px;">
+                                            <i class="fas fa-exclamation-triangle"></i> Attention
+                                        </p>
+                                        <p style="color: var(--text); font-size: 14px;">
+                                            Êtes-vous sûr de vouloir supprimer le sujet :<br>
+                                            <strong>"${topicTitle}"</strong> ?
+                                        </p>
+                                        <p style="color: var(--text-light); font-size: 13px; margin-top: 10px;">
+                                            Cette action ne peut pas être annulée. Toutes les réponses associées seront également supprimées.
+                                        </p>
+                                    </div>
+                                    
+                                    <div style="background: rgba(0, 212, 255, 0.1); padding: 15px; border-radius: 8px; margin-top: 20px;">
+                                        <p style="color: var(--accent); font-weight: 600;">
+                                            <i class="fas fa-info-circle"></i> Note importante
+                                        </p>
+                                        <p style="margin-top: 10px; color: var(--text); font-size: 13px;">
+                                            Si votre message contenait des informations sensibles par erreur, 
+                                            nous vous recommandons de le modifier plutôt que de le supprimer.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-actions">
+                                <button class="btn btn-secondary" id="cancelDelete">
+                                    Annuler
+                                </button>
+                                <button class="btn btn-primary" id="confirmDelete" style="background: linear-gradient(135deg, var(--secondary), #ff4757);">
+                                    <i class="fas fa-trash"></i> Supprimer définitivement
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.insertAdjacentHTML('beforeend', modalHTML);
+                
+                const modal = document.getElementById(modalId);
+                const cancelBtn = document.getElementById('cancelDelete');
+                const confirmBtn = document.getElementById('confirmDelete');
+                const closeBtn = document.getElementById('closeDeleteConfirmation');
+                
+                const closeModal = (result) => {
+                    modal.classList.remove('active');
+                    setTimeout(() => {
+                        modal.remove();
+                        resolve(result);
+                    }, 300);
+                };
+                
+                cancelBtn.addEventListener('click', () => closeModal(false));
+                confirmBtn.addEventListener('click', () => closeModal(true));
+                closeBtn.addEventListener('click', () => closeModal(false));
+                
+                // Fermer en cliquant à l'extérieur
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        closeModal(false);
+                    }
+                });
+                
+                // Fermer avec Échap
+                const handleEscape = (e) => {
+                    if (e.key === 'Escape' && modal.classList.contains('active')) {
+                        closeModal(false);
+                    }
+                };
+                
+                document.addEventListener('keydown', handleEscape);
+            });
+        };
+
+        // Fonction pour afficher la modale de modification
+        window.showEditModal = function(topic) {
+            return new Promise((resolve) => {
+                const modalId = 'editTopicModal';
+                let existingModal = document.getElementById(modalId);
+                
+                if (existingModal) {
+                    existingModal.remove();
+                }
+                
+                const modalHTML = `
+                    <div class="modal-overlay active" id="${modalId}">
+                        <div class="new-topic-modal">
+                            <div class="modal-header" style="background: linear-gradient(135deg, var(--accent), #00a8cc);">
+                                <button class="modal-close" id="closeEditModal">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                                <h2 class="modal-title">Modifier le sujet</h2>
+                                <p class="modal-subtitle">Modifiez votre discussion</p>
+                            </div>
+                            <div class="modal-body">
+                                <div class="form-group">
+                                    <label class="form-label" for="editTopicCategory">Catégorie *</label>
+                                    <select class="form-select game-select" id="editTopicCategory" required>
+                                        <option value="feedback" ${topic.category === 'feedback' ? 'selected' : ''}>Avis & Retours sur GameHub</option>
+                                        <option value="strategy" ${topic.category === 'strategy' ? 'selected' : ''}>Stratégie d'utilisation d'un bot</option>
+                                        <option value="question" ${topic.category === 'question' ? 'selected' : ''}>Question sur la plateforme</option>
+                                        <option value="improvement" ${topic.category === 'improvement' ? 'selected' : ''}>Suggestion d'amélioration</option>
+                                        <option value="discussion" ${topic.category === 'discussion' ? 'selected' : ''}>Discussion générale</option>
+                                    </select>
+                                    <div class="form-help">Sélectionnez le type de discussion</div>
+                                </div>
+
+                                <div class="form-group" id="editGameSelectGroup" style="display: ${topic.category === 'strategy' ? 'block' : 'none'}">
+                                    <label class="form-label" for="editTopicGame">Jeu concerné</label>
+                                    <select class="form-select game-select" id="editTopicGame">
+                                        <option value="">Tous les jeux (optionnel)</option>
+                                        <option value="king-thimbles" ${topic.gameId === 'king-thimbles' ? 'selected' : ''}>King Thimbles</option>
+                                        <option value="mines" ${topic.gameId === 'mines' ? 'selected' : ''}>Mines</option>
+                                        <option value="luckyjet" ${topic.gameId === 'luckyjet' ? 'selected' : ''}>LuckyJet</option>
+                                        <option value="crime-empire" ${topic.gameId === 'crime-empire' ? 'selected' : ''}>Crime Empire</option>
+                                        <option value="rocket-queen" ${topic.gameId === 'rocket-queen' ? 'selected' : ''}>Rocket Queen</option>
+                                        <option value="crash" ${topic.gameId === 'crash' ? 'selected' : ''}>Crash</option>
+                                        <option value="rocket-x" ${topic.gameId === 'rocket-x' ? 'selected' : ''}>Rocket X</option>
+                                        <option value="astronaute" ${topic.gameId === 'astronaute' ? 'selected' : ''}>Astronaute</option>
+                                        <option value="speed-cash" ${topic.gameId === 'speed-cash' ? 'selected' : ''}>Speed & Cash</option>
+                                        <option value="tropicana" ${topic.gameId === 'tropicana' ? 'selected' : ''}>Tropicana</option>
+                                    </select>
+                                    <div class="form-help">Sélectionnez le jeu concerné par votre stratégie</div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label" for="editTopicTitle">Titre de la discussion *</label>
+                                    <input type="text" class="form-input" id="editTopicTitle" value="${topic.title}" placeholder="Ex: Excellente stratégie pour Mines" required>
+                                    <div class="form-help">Soyez clair et concis dans votre titre</div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label" for="editTopicContent">Message *</label>
+                                    <textarea class="form-textarea" id="editTopicContent" placeholder="Partagez votre expérience, votre stratégie ou votre question avec la communauté..." required>${topic.content}</textarea>
+                                    <div class="form-help">
+                                        <p><strong>Rappel des règles :</strong></p>
+                                        <ul style="margin-left: 15px; margin-top: 5px; font-size: 12px;">
+                                            <li>⚠️ Les numéros de téléphone sont interdits (même avec des sauts de ligne)</li>
+                                            <li>⚠️ Les liens externes (WhatsApp, Telegram, etc.) sont interdits</li>
+                                            <li>⚠️ Le langage injurieux est interdit</li>
+                                            <li>⚠️ Les publicités sont interdites</li>
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                <input type="hidden" id="editTopicId" value="${topic.id}">
+                            </div>
+                            <div class="modal-actions">
+                                <button class="btn btn-secondary" id="cancelEditTopic">
+                                    Annuler
+                                </button>
+                                <button class="btn btn-primary" id="submitEditTopic" style="background: linear-gradient(135deg, var(--accent), #00a8cc);">
+                                    <i class="fas fa-save"></i> Enregistrer les modifications
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.insertAdjacentHTML('beforeend', modalHTML);
+                
+                const modal = document.getElementById(modalId);
+                const cancelBtn = document.getElementById('cancelEditTopic');
+                const confirmBtn = document.getElementById('submitEditTopic');
+                const closeBtn = document.getElementById('closeEditModal');
+                const categorySelect = document.getElementById('editTopicCategory');
+                const gameSelectGroup = document.getElementById('editGameSelectGroup');
+                
+                // Gérer l'affichage de la sélection de jeu
+                categorySelect.addEventListener('change', function() {
+                    if (this.value === 'strategy') {
+                        gameSelectGroup.style.display = 'block';
+                    } else {
+                        gameSelectGroup.style.display = 'none';
+                    }
+                });
+                
+                const closeModal = (result) => {
+                    modal.classList.remove('active');
+                    setTimeout(() => {
+                        modal.remove();
+                        resolve(result);
+                    }, 300);
+                };
+                
+                cancelBtn.addEventListener('click', () => closeModal(null));
+                closeBtn.addEventListener('click', () => closeModal(null));
+                
+                // Gérer la soumission
+                confirmBtn.addEventListener('click', async function() {
+                    const topicId = document.getElementById('editTopicId').value;
+                    const category = categorySelect.value;
+                    const title = document.getElementById('editTopicTitle').value.trim();
+                    const content = document.getElementById('editTopicContent').value.trim();
+                    const gameId = document.getElementById('editTopicGame')?.value || null;
+
+                    // Validation
+                    if (!title || !content) {
+                        showNotification('Erreur', 'Veuillez remplir tous les champs', 'error', 4000);
+                        return;
+                    }
+
+                    if (title.length < 5) {
+                        showNotification('Erreur', 'Le titre doit contenir au moins 5 caractères', 'error', 4000);
+                        return;
+                    }
+
+                    if (content.length < 20) {
+                        showNotification('Erreur', 'Le message doit contenir au moins 20 caractères', 'error', 4000);
+                        return;
+                    }
+
+                    // Désactiver le bouton pendant le traitement
+                    confirmBtn.disabled = true;
+                    confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enregistrement...';
+
+                    try {
+                        const success = await window.editTopic(topicId, title, content);
+                        if (success) {
+                            closeModal({ topicId, title, content, category, gameId });
+                        }
+                    } finally {
+                        confirmBtn.disabled = false;
+                        confirmBtn.innerHTML = '<i class="fas fa-save"></i> Enregistrer les modifications';
+                    }
+                });
+                
+                // Fermer en cliquant à l'extérieur
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        closeModal(null);
+                    }
+                });
+                
+                // Fermer avec Échap
+                const handleEscape = (e) => {
+                    if (e.key === 'Escape' && modal.classList.contains('active')) {
+                        closeModal(null);
+                    }
+                };
+                
+                document.addEventListener('keydown', handleEscape);
+            });
+        };
+        
+        // Fonction pour récupérer tous les sujets
+        window.getForumTopics = async function(category = 'all') {
+            try {
+                const topicsRef = collection(db, 'forum_topics');
+                let q;
+                
+                if (category === 'all') {
+                    q = query(topicsRef, orderBy('createdAt', 'desc'));
+                } else {
+                    q = query(topicsRef, orderBy('createdAt', 'desc'));
+                }
+                
+                const querySnapshot = await getDocs(q);
+                const topics = [];
+                
+                querySnapshot.forEach((doc) => {
+                    const topic = doc.data();
+                    topic.id = doc.id;
+                    // Convertir le timestamp en date lisible
+                    if (topic.createdAt && topic.createdAt.toDate) {
+                        topic.createdAt = topic.createdAt.toDate();
+                    }
+                    topics.push(topic);
+                });
+                
+                // Filtrer par catégorie si nécessaire
+                if (category !== 'all') {
+                    return topics.filter(topic => topic.category === category);
+                }
+                
+                return topics;
+            } catch (error) {
+                console.error('Erreur lors de la récupération des sujets:', error);
+                return [];
+            }
+        };
+        
+        // Fonction pour la modération rétroactive
+        async function retroactiveModerationCheck() {
+            try {
+                const topicsRef = collection(db, 'forum_topics');
+                const q = query(topicsRef, where('moderated', '==', false));
+                const querySnapshot = await getDocs(q);
+                
+                let moderatedCount = 0;
+                
+                for (const doc of querySnapshot.docs) {
+                    const topic = doc.data();
+                    const violations = window.contentModeration.checkContent(
+                        topic.title + ' ' + topic.content
+                    );
+                    
+                    if (violations.length > 0) {
+                        // Mettre à jour le sujet avec le contenu filtré
+                        const sanitizedTitle = window.contentModeration.sanitizeContent(topic.title);
+                        const sanitizedContent = window.contentModeration.sanitizeContent(topic.content);
+                        
+                        await updateDoc(doc.ref, {
+                            title: sanitizedTitle,
+                            content: sanitizedContent,
+                            moderated: true,
+                            moderationDate: Timestamp.now(),
+                            originalContent: topic.content
+                        });
+                        
+                        moderatedCount++;
+                        
+                        // Enregistrer la violation
+                        await window.contentModeration.logViolation(
+                            topic.userId,
+                            violations.map(v => v.message),
+                            {
+                                originalTitle: topic.title,
+                                originalContent: topic.content,
+                                sanitizedTitle: sanitizedTitle,
+                                sanitizedContent: sanitizedContent
+                            }
+                        );
+                    }
+                }
+                
+                if (moderatedCount > 0) {
+                    console.log(`Modération rétroactive: ${moderatedCount} sujets filtrés`);
+                }
+            } catch (error) {
+                console.error('Erreur lors de la modération rétroactive:', error);
+            }
+        }
+        
+        // Vérifier l'état d'authentification
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                // Vérifier si l'email est vérifié
+                if (!user.emailVerified) {
+                    // Rediriger vers la page de connexion si email non vérifié
+                    showNotification('Email non vérifié', 'Veuillez vérifier votre email avant d\'accéder au forum.', 'warning', 3000);
+                    setTimeout(() => {
+                        window.location.href = 'login.html';
+                    }, 3000);
+                    return;
+                }
+                
+                // Charger les sujets du forum
+                loadForumTopics();
+                
+                // Exécuter une modération rétroactive au démarrage
+                setTimeout(retroactiveModerationCheck, 5000);
+            } else {
+                // Rediriger vers la page de connexion si non connecté
+                window.location.href = 'login.html';
+            }
+        });
+        
+        // Exécuter la modération rétroactive toutes les heures
+        setInterval(retroactiveModerationCheck, 3600000);
+        
+        // Système de notifications
+        window.showNotification = function(title, message, type = 'info', duration = 4000) {
+            const notificationSystem = document.getElementById('notificationSystem');
+            const notificationId = 'notification-' + Date.now();
+            
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.id = notificationId;
+            
+            const icons = {
+                success: 'fas fa-check-circle',
+                warning: 'fas fa-exclamation-triangle',
+                error: 'fas fa-times-circle',
+                info: 'fas fa-info-circle'
+            };
+            
+            notification.innerHTML = `
+                <div class="notification-icon">
+                    <i class="${icons[type]}"></i>
+                </div>
+                <div class="notification-content">
+                    <div class="notification-title">${title}</div>
+                    <div class="notification-message">${message}</div>
+                </div>
+                <button class="notification-close" onclick="closeNotification('${notificationId}')">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            
+            notificationSystem.appendChild(notification);
+            
+            // Animation d'entrée
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 10);
+            
+            // Fermeture automatique
+            if (duration > 0) {
+                setTimeout(() => {
+                    closeNotification(notificationId);
+                }, duration);
+            }
+            
+            return notificationId;
+        };
+        
+        // Fonction pour fermer une notification
+        window.closeNotification = function(notificationId) {
+            const notification = document.getElementById(notificationId);
+            if (notification) {
+                notification.classList.remove('show');
+                notification.classList.add('hide');
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 400);
+            }
+        };
+        
+        // Fonction pour charger les sujets du forum
+        async function loadForumTopics(category = 'all') {
+            try {
+                const topicsContainer = document.getElementById('topicsContainer');
+                const loadingElement = document.getElementById('loadingIndicator');
+                
+                // Afficher l'indicateur de chargement
+                if (loadingElement) {
+                    loadingElement.style.display = 'flex';
+                }
+                
+                // Vider le conteneur
+                if (topicsContainer) {
+                    topicsContainer.innerHTML = '';
+                }
+                
+                // Récupérer les sujets
+                const topics = await window.getForumTopics(category);
+                
+                // Cacher l'indicateur de chargement
+                if (loadingElement) {
+                    loadingElement.style.display = 'none';
+                }
+                
+                // Afficher les sujets
+                if (topicsContainer && topics.length > 0) {
+                    const currentUser = auth.currentUser;
+                    topics.forEach(topic => {
+                        const topicElement = createTopicElement(topic, currentUser);
+                        topicsContainer.appendChild(topicElement);
+                    });
+                } else if (topicsContainer) {
+                    topicsContainer.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">
+                                <i class="fas fa-comments"></i>
+                            </div>
+                            <h3>Aucun sujet trouvé</h3>
+                            <p>Soyez le premier à démarrer une discussion !</p>
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                console.error('Erreur lors du chargement des sujets:', error);
+                showNotification('Erreur', 'Impossible de charger les sujets du forum', 'error', 4000);
+            }
+        }
+        
+        // Fonction pour créer un élément de sujet avec boutons d'action
+        function createTopicElement(topic, currentUser) {
+            const topicElement = document.createElement('div');
+            topicElement.className = 'topic-card';
+            if (topic.moderated) {
+                topicElement.classList.add('moderated');
+            }
+            topicElement.dataset.id = topic.id;
+            
+            // Formater la date
+            const date = topic.createdAt ? formatDate(topic.createdAt) : 'Date inconnue';
+            
+            // Déterminer l'icône de catégorie
+            const categoryIcons = {
+                'feedback': 'fas fa-star',
+                'strategy': 'fas fa-chess',
+                'question': 'fas fa-question-circle',
+                'improvement': 'fas fa-lightbulb',
+                'discussion': 'fas fa-comments'
+            };
+            
+            const categoryIcon = categoryIcons[topic.category] || 'fas fa-comment';
+            
+            // Déterminer la couleur de catégorie
+            const categoryColors = {
+                'feedback': 'var(--primary)',
+                'strategy': 'var(--success)',
+                'question': 'var(--warning)',
+                'improvement': 'var(--accent)',
+                'discussion': 'var(--info)'
+            };
+            
+            const categoryColor = categoryColors[topic.category] || 'var(--text-light)';
+            
+            // Déterminer le label de catégorie
+            const categoryLabels = {
+                'feedback': 'Avis & Retours',
+                'strategy': 'Stratégies',
+                'question': 'Questions',
+                'improvement': 'Améliorations',
+                'discussion': 'Discussions'
+            };
+            
+            const categoryLabel = categoryLabels[topic.category] || 'Discussion';
+            
+            // Vérifier si l'utilisateur courant est l'auteur
+            const isAuthor = currentUser && topic.userId === currentUser.uid;
+            
+            // Badge de modération
+            const moderationBadge = topic.moderated ? 
+                '<span class="moderation-badge"><i class="fas fa-shield-alt"></i> Filtré</span>' : '';
+            
+            // Boutons d'action (seulement pour l'auteur)
+            const actionButtons = isAuthor ? `
+                <div class="topic-actions">
+                    <button class="action-btn edit-btn" data-id="${topic.id}" title="Modifier">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="action-btn delete-btn" data-id="${topic.id}" title="Supprimer">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            ` : '';
+            
+            topicElement.innerHTML = `
+                <div class="topic-header">
+                    <div class="topic-category" style="color: ${categoryColor}">
+                        <i class="${categoryIcon}"></i>
+                        <span>${categoryLabel}</span>
+                        ${moderationBadge}
+                    </div>
+                    ${topic.isPinned ? '<div class="topic-pinned"><i class="fas fa-thumbtack"></i> Épinglé</div>' : ''}
+                </div>
+                <div class="topic-body">
+                    <h3 class="topic-title">${topic.title}</h3>
+                    <div class="topic-content ${topic.moderated ? 'filtered' : ''}">
+                        ${truncateText(topic.content, 150)}
+                        ${topic.moderated ? '<div class="moderation-warning"><p><i class="fas fa-exclamation-triangle"></i> Contenu filtré automatiquement</p></div>' : ''}
+                    </div>
+                </div>
+                <div class="topic-footer">
+                    <div class="topic-author">
+                        <div class="author-avatar">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div class="author-info">
+                            <div class="author-name">${topic.username}</div>
+                            <div class="topic-date">${date}</div>
+                        </div>
+                    </div>
+                    <div class="topic-stats">
+                        <div class="stat-item">
+                            <i class="fas fa-comment"></i>
+                            <span>${topic.replies || 0}</span>
+                        </div>
+                        <div class="stat-item">
+                            <i class="fas fa-eye"></i>
+                            <span>${topic.views || 0}</span>
+                        </div>
+                        <div class="stat-item">
+                            <i class="fas fa-heart"></i>
+                            <span>${topic.likes || 0}</span>
+                        </div>
+                    </div>
+                    ${actionButtons}
+                </div>
+            `;
+            
+            // Ajouter un événement de clic pour ouvrir le sujet
+            topicElement.addEventListener('click', function(e) {
+                // Ne pas ouvrir le sujet si on clique sur les boutons d'action
+                if (!e.target.closest('.topic-actions')) {
+                    openTopic(topic.id);
+                }
+            });
+            
+            // Ajouter les événements pour les boutons d'action
+            if (isAuthor) {
+                const editBtn = topicElement.querySelector('.edit-btn');
+                const deleteBtn = topicElement.querySelector('.delete-btn');
+                
+                editBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    window.showEditModal(topic).then(result => {
+                        if (result) {
+                            // Recharger les sujets après modification
+                            setTimeout(() => {
+                                loadForumTopics(currentCategory);
+                            }, 500);
+                        }
+                    });
+                });
+                
+                deleteBtn.addEventListener('click', async function(e) {
+                    e.stopPropagation();
+                    const success = await window.deleteTopic(topic.id);
+                    if (success) {
+                        // Supprimer l'élément du DOM
+                        topicElement.remove();
+                        // Mettre à jour le compteur
+                        updateTopicsCount();
+                    }
+                });
+            }
+            
+            return topicElement;
+        }
+        
+        // Fonction pour formater la date
+        function formatDate(date) {
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMs / 3600000);
+            const diffDays = Math.floor(diffMs / 86400000);
+            
+            if (diffMins < 1) {
+                return 'À l\'instant';
+            } else if (diffMins < 60) {
+                return `Il y a ${diffMins} min`;
+            } else if (diffHours < 24) {
+                return `Il y a ${diffHours} h`;
+            } else if (diffDays < 7) {
+                return `Il y a ${diffDays} j`;
+            } else {
+                return date.toLocaleDateString('fr-FR', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric'
+                });
+            }
+        }
+        
+        // Fonction pour tronquer le texte
+        function truncateText(text, maxLength) {
+            if (text.length <= maxLength) return text;
+            return text.substring(0, maxLength) + '...';
+        }
+        
+        // Fonction pour ouvrir un sujet (à implémenter dans une version future)
+        function openTopic(topicId) {
+            // Pour l'instant, on affiche une notification
+            showNotification('Fonctionnalité à venir', 'La lecture des sujets sera disponible dans une prochaine mise à jour.', 'info', 3000);
+            // Dans une version future: window.location.href = `topic.html?id=${topicId}`;
+        }
+        
+        // Fonction pour mettre à jour le compteur de sujets
+        function updateTopicsCount() {
+            const topicsContainer = document.getElementById('topicsContainer');
+            const topicsCountElement = document.getElementById('topicsCount');
+            
+            if (topicsContainer && topicsCountElement) {
+                const topicCards = topicsContainer.querySelectorAll('.topic-card');
+                const emptyState = topicsContainer.querySelector('.empty-state');
+                
+                if (emptyState) {
+                    topicsCountElement.textContent = '0';
+                } else {
+                    topicsCountElement.textContent = topicCards.length;
+                }
+            }
+        }
+        
+        // Exposer la fonction de chargement
+        window.loadForumTopics = loadForumTopics;
+        
+        // Fonction pour les modérateurs (à appeler depuis une page d'admin)
+        window.moderateUserContent = async function(userId, action, reason = '') {
+            try {
+                const userRef = doc(db, 'users', userId);
+                
+                switch (action) {
+                    case 'warn':
+                        await updateDoc(userRef, {
+                            warnings: increment(1),
+                            lastWarning: Timestamp.now(),
+                            warningReason: reason
+                        });
+                        break;
+                        
+                    case 'suspend':
+                        const suspensionEnd = new Date();
+                        suspensionEnd.setDate(suspensionEnd.getDate() + 7); // 7 jours de suspension
+                        
+                        await updateDoc(userRef, {
+                            isSuspended: true,
+                            suspensionEnd: Timestamp.fromDate(suspensionEnd),
+                            suspensionReason: reason
+                        });
+                        break;
+                        
+                    case 'ban':
+                        await updateDoc(userRef, {
+                            isBanned: true,
+                            banDate: Timestamp.now(),
+                            banReason: reason
+                        });
+                        break;
+                }
+                
+                return true;
+            } catch (error) {
+                console.error('Erreur lors de la modération:', error);
+                return false;
+            }
+        };
+        
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #8A2BE2;
+            --primary-dark: #6A1BB2;
+            --secondary: #FF6B6B;
+            --accent: #00D4FF;
+            --dark: #1A1A2E;
+            --light: #F8F9FA;
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --text: #333333;
+            --text-light: #6C757D;
+            --success: #28A745;
+            --warning: #FFC107;
+            --info: #17A2B8;
+            --shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            --radius: 12px;
+            --transition: all 0.3s ease;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #1A1A2E 0%, #16213E 50%, #0F3460 100%);
+            color: var(--light);
+            min-height: 100vh;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .app-container {
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 0 0 100px;
+        }
+
+        /* Header */
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 15px 10px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(26, 26, 46, 0.9);
+            backdrop-filter: blur(10px);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .logo-text {
+            font-size: 1.3rem;
+            font-weight: 700;
+            background: linear-gradient(to right, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .user-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .icon-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: var(--light);
+            transition: var(--transition);
+            cursor: pointer;
+        }
+
+        .icon-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        /* Forum Header */
+        .forum-header {
+            padding: 20px 15px;
+            text-align: center;
+        }
+
+        .forum-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            background: linear-gradient(to right, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .forum-subtitle {
+            font-size: 1rem;
+            color: var(--text-light);
+            margin-bottom: 20px;
+        }
+
+        /* Filter Tabs */
+        .filter-tabs {
+            display: flex;
+            overflow-x: auto;
+            gap: 8px;
+            margin: 0 15px 20px;
+            padding-bottom: 5px;
+            scrollbar-width: none;
+        }
+
+        .filter-tabs::-webkit-scrollbar {
+            display: none;
+        }
+
+        .filter-tab {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--light);
+            cursor: pointer;
+            transition: var(--transition);
+            white-space: nowrap;
+            border: 1px solid transparent;
+        }
+
+        .filter-tab:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .filter-tab.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+            box-shadow: 0 4px 12px rgba(138, 43, 226, 0.3);
+        }
+
+        /* Topics Container */
+        .topics-container {
+            margin: 0 15px 20px;
+        }
+
+        .topics-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .topics-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+
+        .topics-count {
+            font-size: 0.9rem;
+            color: var(--text-light);
+        }
+
+        /* Topics Grid */
+        .topics-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* Topic Card */
+        .topic-card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 15px;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+            cursor: pointer;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+        }
+
+        .topic-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .topic-card.moderated {
+            opacity: 0.95;
+            border-left: 4px solid var(--warning);
+        }
+
+        .topic-card.moderated::before {
+            content: '⚠️ Contenu filtré';
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255, 193, 7, 0.1);
+            color: var(--warning);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            z-index: 1;
+        }
+
+        .topic-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .topic-category {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .topic-pinned {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            background: rgba(255, 193, 7, 0.1);
+            color: var(--warning);
+            padding: 4px 8px;
+            border-radius: 20px;
+        }
+
+        .topic-body {
+            margin-bottom: 15px;
+        }
+
+        .topic-title {
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 8px;
+            font-size: 15px;
+            line-height: 1.4;
+        }
+
+        .topic-content {
+            font-size: 13px;
+            color: var(--text-light);
+            line-height: 1.5;
+        }
+
+        .topic-content.filtered {
+            position: relative;
+        }
+
+        .topic-content.filtered::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.8));
+            pointer-events: none;
+        }
+
+        .topic-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 12px;
+            border-top: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .topic-author {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .author-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: white;
+        }
+
+        .author-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .author-name {
+            font-weight: 600;
+            font-size: 12px;
+            color: var(--text);
+        }
+
+        .topic-date {
+            font-size: 11px;
+            color: var(--text-light);
+        }
+
+        .topic-stats {
+            display: flex;
+            gap: 12px;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            color: var(--text-light);
+        }
+
+        .stat-item i {
+            font-size: 11px;
+        }
+
+        /* Topic Actions */
+        .topic-actions {
+            display: flex;
+            gap: 8px;
+            margin-left: 10px;
+        }
+
+        .action-btn {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            cursor: pointer;
+            transition: var(--transition);
+            border: none;
+            background: transparent;
+            color: var(--text-light);
+        }
+
+        .action-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .edit-btn:hover {
+            background: rgba(0, 212, 255, 0.1);
+            color: var(--accent);
+        }
+
+        .delete-btn:hover {
+            background: rgba(255, 107, 107, 0.1);
+            color: var(--secondary);
+        }
+
+        /* Badge pour contenu modéré */
+        .moderation-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(255, 193, 7, 0.1);
+            color: var(--warning);
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        /* Style pour le message de modération */
+        .moderation-warning {
+            background: rgba(255, 193, 7, 0.1);
+            border-left: 3px solid var(--warning);
+            padding: 8px;
+            margin: 10px 0 0;
+            border-radius: 4px;
+        }
+
+        .moderation-warning p {
+            margin: 0;
+            color: var(--warning);
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* New Topic Button */
+        .new-topic-btn {
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: white;
+            box-shadow: 0 4px 20px rgba(138, 43, 226, 0.4);
+            cursor: pointer;
+            transition: var(--transition);
+            z-index: 90;
+            border: none;
+        }
+
+        .new-topic-btn:hover {
+            transform: scale(1.1) rotate(90deg);
+            box-shadow: 0 6px 25px rgba(138, 43, 226, 0.6);
+        }
+
+        /* Loading Indicator */
+        .loading-indicator {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            color: var(--text-light);
+            gap: 15px;
+        }
+
+        .loading-spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-light);
+        }
+
+        .empty-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: var(--text-light);
+            margin: 0 auto 15px;
+        }
+
+        .empty-state h3 {
+            font-size: 1.2rem;
+            margin-bottom: 8px;
+            color: var(--text);
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+            opacity: 0;
+            visibility: hidden;
+            transition: var(--transition);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .new-topic-modal {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            width: 100%;
+            max-width: 500px;
+            max-height: 85vh;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            transform: translateY(30px);
+            transition: var(--transition);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-overlay.active .new-topic-modal {
+            transform: translateY(0);
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(255, 255, 255, 0.2);
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+            border: none;
+            color: white;
+        }
+
+        .modal-close:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: rotate(90deg);
+        }
+
+        .modal-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .modal-subtitle {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .modal-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex-grow: 1;
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary) rgba(0, 0, 0, 0.1);
+        }
+
+        .modal-body::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .modal-body::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 10px;
+        }
+
+        .modal-body::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--text);
+            font-size: 14px;
+        }
+
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: var(--transition);
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(138, 43, 226, 0.2);
+        }
+
+        .form-textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .form-help {
+            font-size: 12px;
+            color: var(--text-light);
+            margin-top: 5px;
+        }
+
+        .game-select-container {
+            position: relative;
+        }
+
+        .game-select {
+            appearance: none;
+            padding-right: 40px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%238A2BE2' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 15px center;
+            background-size: 16px;
+        }
+
+        .modal-actions {
+            padding: 20px;
+            display: flex;
+            gap: 10px;
+            flex-shrink: 0;
+            border-top: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border-radius: var(--radius);
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 14px;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, var(--primary-dark), #5a189a);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(138, 43, 226, 0.3);
+        }
+
+        .btn-secondary {
+            background: rgba(0, 0, 0, 0.05);
+            color: var(--text);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        /* Système de notifications élégant */
+        .notification-system {
+            position: fixed;
+            top: 80px;
+            right: 15px;
+            z-index: 2000;
+            max-width: 320px;
+        }
+
+        .notification {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 15px;
+            margin-bottom: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            border-left: 4px solid var(--primary);
+            transform: translateX(400px);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        .notification.hide {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+
+        .notification.success {
+            border-left-color: var(--success);
+        }
+
+        .notification.warning {
+            border-left-color: var(--warning);
+        }
+
+        .notification.error {
+            border-left-color: var(--secondary);
+        }
+
+        .notification.info {
+            border-left-color: var(--accent);
+        }
+
+        .notification-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .notification.success .notification-icon {
+            background: rgba(40, 167, 69, 0.15);
+            color: var(--success);
+        }
+
+        .notification.warning .notification-icon {
+            background: rgba(255, 193, 7, 0.15);
+            color: var(--warning);
+        }
+
+        .notification.error .notification-icon {
+            background: rgba(255, 107, 107, 0.15);
+            color: var(--secondary);
+        }
+
+        .notification.info .notification-icon {
+            background: rgba(0, 212, 255, 0.15);
+            color: var(--accent);
+        }
+
+        .notification-content {
+            flex: 1;
+        }
+
+        .notification-title {
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 4px;
+            font-size: 14px;
+        }
+
+        .notification-message {
+            color: var(--text-light);
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        .notification-close {
+            background: none;
+            border: none;
+            color: var(--text-light);
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: var(--transition);
+            flex-shrink: 0;
+        }
+
+        .notification-close:hover {
+            background: rgba(0, 0, 0, 0.05);
+            color: var(--text);
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(26, 26, 46, 0.95);
+            backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: space-around;
+            padding: 12px 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 100;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: var(--text-light);
+            font-size: 11px;
+            transition: var(--transition);
+            cursor: pointer;
+        }
+
+        .nav-item.active {
+            color: var(--accent);
+        }
+
+        .nav-icon {
+            font-size: 18px;
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes moderatePulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 193, 7, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); }
+        }
+
+        .topic-card.recently-moderated {
+            animation: moderatePulse 2s ease-in-out;
+        }
+
+        /* Responsive Design Amélioré */
+
+        /* Tablettes en mode portrait */
+        @media (max-width: 768px) {
+            .app-container {
+                max-width: 100%;
+                padding: 0 10px 90px;
+            }
+            
+            .forum-header {
+                padding: 15px 10px;
+            }
+            
+            .forum-title {
+                font-size: 1.6rem;
+            }
+            
+            .forum-subtitle {
+                font-size: 0.9rem;
+            }
+            
+            .filter-tabs {
+                margin: 0 10px 15px;
+            }
+            
+            .filter-tab {
+                padding: 8px 14px;
+                font-size: 12px;
+            }
+            
+            .topics-container {
+                margin: 0 10px 20px;
+            }
+            
+            .topic-card {
+                padding: 12px;
+            }
+            
+            .modal-overlay {
+                padding: 15px;
+            }
+            
+            .new-topic-modal {
+                max-width: 90%;
+                max-height: 90vh;
+            }
+            
+            .modal-header {
+                padding: 15px;
+            }
+            
+            .modal-body {
+                padding: 15px;
+            }
+            
+            .modal-actions {
+                padding: 15px;
+            }
+            
+            .notification-system {
+                right: 10px;
+                left: 10px;
+                max-width: calc(100% - 20px);
+            }
+            
+            .bottom-nav {
+                padding: 10px 0;
+            }
+            
+            .nav-item {
+                font-size: 10px;
+            }
+            
+            .nav-icon {
+                font-size: 16px;
+            }
+            
+            .topic-actions {
+                gap: 6px;
+            }
+            
+            .action-btn {
+                width: 26px;
+                height: 26px;
+                font-size: 11px;
+            }
+        }
+
+        /* Smartphones en mode paysage */
+        @media (max-width: 768px) and (orientation: landscape) {
+            .app-container {
+                padding-bottom: 70px;
+            }
+            
+            .forum-header {
+                padding: 10px;
+            }
+            
+            .forum-title {
+                font-size: 1.4rem;
+                margin-bottom: 5px;
+            }
+            
+            .forum-subtitle {
+                font-size: 0.8rem;
+                margin-bottom: 10px;
+            }
+            
+            .filter-tabs {
+                margin-bottom: 10px;
+                padding-bottom: 3px;
+            }
+            
+            .filter-tab {
+                padding: 6px 12px;
+                font-size: 11px;
+            }
+            
+            .topics-container {
+                margin-bottom: 15px;
+            }
+            
+            .topics-header {
+                margin-bottom: 10px;
+            }
+            
+            .topics-title {
+                font-size: 1.1rem;
+            }
+            
+            .topics-grid {
+                gap: 8px;
+            }
+            
+            .topic-card {
+                padding: 10px;
+            }
+            
+            .topic-title {
+                font-size: 14px;
+                margin-bottom: 5px;
+            }
+            
+            .topic-content {
+                font-size: 12px;
+            }
+            
+            .author-avatar {
+                width: 28px;
+                height: 28px;
+            }
+            
+            .stat-item {
+                gap: 3px;
+            }
+            
+            .new-topic-btn {
+                bottom: 70px;
+                right: 15px;
+                width: 50px;
+                height: 50px;
+                font-size: 18px;
+            }
+            
+            .modal-body {
+                max-height: 60vh;
+            }
+        }
+
+        /* Smartphones en mode portrait (petits écrans) */
+        @media (max-width: 480px) {
+            .app-container {
+                padding: 0 8px 85px;
+            }
+            
+            .app-header {
+                padding: 12px 8px 8px;
+            }
+            
+            .logo-icon {
+                width: 32px;
+                height: 32px;
+                font-size: 16px;
+            }
+            
+            .logo-text {
+                font-size: 1.2rem;
+            }
+            
+            .icon-btn {
+                width: 32px;
+                height: 32px;
+                font-size: 14px;
+            }
+            
+            .forum-header {
+                padding: 12px 8px;
+            }
+            
+            .forum-title {
+                font-size: 1.4rem;
+                margin-bottom: 8px;
+            }
+            
+            .forum-subtitle {
+                font-size: 0.85rem;
+                margin-bottom: 15px;
+                line-height: 1.4;
+            }
+            
+            .filter-tabs {
+                margin: 0 8px 12px;
+                gap: 6px;
+            }
+            
+            .filter-tab {
+                padding: 7px 12px;
+                font-size: 11px;
+                border-radius: 40px;
+            }
+            
+            .filter-tab i {
+                font-size: 10px;
+            }
+            
+            .topics-container {
+                margin: 0 8px 15px;
+            }
+            
+            .topics-header {
+                margin-bottom: 12px;
+            }
+            
+            .topics-title {
+                font-size: 1.1rem;
+            }
+            
+            .topics-count {
+                font-size: 0.85rem;
+            }
+            
+            .topics-grid {
+                gap: 8px;
+            }
+            
+            .topic-card {
+                padding: 10px;
+                border-radius: 10px;
+            }
+            
+            .topic-header {
+                margin-bottom: 10px;
+            }
+            
+            .topic-category {
+                font-size: 11px;
+            }
+            
+            .topic-pinned {
+                font-size: 10px;
+                padding: 3px 6px;
+            }
+            
+            .topic-title {
+                font-size: 13px;
+                margin-bottom: 6px;
+                line-height: 1.3;
+            }
+            
+            .topic-content {
+                font-size: 11px;
+                line-height: 1.4;
+            }
+            
+            .topic-footer {
+                padding-top: 10px;
+            }
+            
+            .author-avatar {
+                width: 28px;
+                height: 28px;
+                font-size: 11px;
+            }
+            
+            .author-name {
+                font-size: 11px;
+            }
+            
+            .topic-date {
+                font-size: 10px;
+            }
+            
+            .topic-stats {
+                gap: 10px;
+            }
+            
+            .stat-item {
+                font-size: 11px;
+                gap: 3px;
+            }
+            
+            .stat-item i {
+                font-size: 10px;
+            }
+            
+            .topic-actions {
+                gap: 5px;
+                margin-left: 8px;
+            }
+            
+            .action-btn {
+                width: 24px;
+                height: 24px;
+                font-size: 10px;
+            }
+            
+            .new-topic-btn {
+                bottom: 75px;
+                right: 15px;
+                width: 52px;
+                height: 52px;
+                font-size: 18px;
+            }
+            
+            .modal-overlay {
+                padding: 10px;
+            }
+            
+            .new-topic-modal {
+                max-width: 95%;
+                border-radius: 10px;
+            }
+            
+            .modal-header {
+                padding: 15px;
+            }
+            
+            .modal-title {
+                font-size: 1.2rem;
+                margin-bottom: 3px;
+            }
+            
+            .modal-subtitle {
+                font-size: 0.85rem;
+            }
+            
+            .modal-close {
+                width: 28px;
+                height: 28px;
+                top: 12px;
+                right: 12px;
+                font-size: 14px;
+            }
+            
+            .modal-body {
+                padding: 15px;
+            }
+            
+            .form-group {
+                margin-bottom: 15px;
+            }
+            
+            .form-label {
+                font-size: 13px;
+                margin-bottom: 6px;
+            }
+            
+            .form-input, .form-select, .form-textarea {
+                padding: 10px 12px;
+                font-size: 13px;
+                border-radius: 6px;
+            }
+            
+            .form-textarea {
+                min-height: 100px;
+            }
+            
+            .form-help {
+                font-size: 11px;
+            }
+            
+            .btn {
+                padding: 10px;
+                font-size: 13px;
+                border-radius: 8px;
+            }
+            
+            .loading-indicator {
+                padding: 30px 15px;
+            }
+            
+            .loading-spinner {
+                width: 35px;
+                height: 35px;
+                border-width: 3px;
+            }
+            
+            .empty-state {
+                padding: 30px 15px;
+            }
+            
+            .empty-icon {
+                width: 50px;
+                height: 50px;
+                font-size: 20px;
+                margin-bottom: 12px;
+            }
+            
+            .empty-state h3 {
+                font-size: 1.1rem;
+                margin-bottom: 6px;
+            }
+            
+            .notification-system {
+                top: 70px;
+                right: 8px;
+                left: 8px;
+            }
+            
+            .notification {
+                padding: 12px;
+            }
+            
+            .notification-icon {
+                width: 32px;
+                height: 32px;
+                font-size: 14px;
+            }
+            
+            .notification-title {
+                font-size: 13px;
+            }
+            
+            .notification-message {
+                font-size: 12px;
+            }
+            
+            .bottom-nav {
+                padding: 10px 0 8px;
+            }
+            
+            .nav-item {
+                font-size: 9px;
+                gap: 3px;
+            }
+            
+            .nav-icon {
+                font-size: 15px;
+            }
+        }
+
+        /* Très petits écrans (iPhone SE, etc.) */
+        @media (max-width: 375px) {
+            .app-container {
+                padding: 0 6px 80px;
+            }
+            
+            .app-header {
+                padding: 10px 6px 6px;
+            }
+            
+            .forum-title {
+                font-size: 1.3rem;
+            }
+            
+            .forum-subtitle {
+                font-size: 0.8rem;
+            }
+            
+            .filter-tabs {
+                margin: 0 6px 10px;
+            }
+            
+            .filter-tab {
+                padding: 6px 10px;
+                font-size: 10px;
+            }
+            
+            .topics-container {
+                margin: 0 6px 12px;
+            }
+            
+            .topics-title {
+                font-size: 1rem;
+            }
+            
+            .topics-count {
+                font-size: 0.8rem;
+            }
+            
+            .new-topic-btn {
+                bottom: 70px;
+                right: 12px;
+                width: 48px;
+                height: 48px;
+                font-size: 17px;
+            }
+            
+            .topic-title {
+                font-size: 12px;
+            }
+            
+            .topic-content {
+                font-size: 10px;
+            }
+            
+            .topic-actions {
+                gap: 4px;
+            }
+            
+            .action-btn {
+                width: 22px;
+                height: 22px;
+                font-size: 9px;
+            }
+            
+            .modal-header {
+                padding: 12px;
+            }
+            
+            .modal-title {
+                font-size: 1.1rem;
+            }
+            
+            .modal-body {
+                padding: 12px;
+            }
+            
+            .bottom-nav {
+                padding: 8px 0 6px;
+            }
+        }
+
+        /* Écrans larges (desktop) */
+        @media (min-width: 1200px) {
+            .app-container {
+                max-width: 1100px;
+            }
+            
+            .topics-grid {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 20px;
+            }
+            
+            .topic-card {
+                padding: 20px;
+            }
+            
+            .forum-header {
+                padding: 30px 20px;
+            }
+            
+            .forum-title {
+                font-size: 2.2rem;
+            }
+            
+            .forum-subtitle {
+                font-size: 1.1rem;
+            }
+        }
+
+        /* Support pour les modes sombre/clair du système */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --card-bg: rgba(30, 30, 46, 0.95);
+                --text: #FFFFFF;
+                --text-light: #A0A0C0;
+            }
+            
+            .form-input, .form-select, .form-textarea {
+                background-color: rgba(255, 255, 255, 0.05);
+                border-color: rgba(255, 255, 255, 0.1);
+                color: var(--text);
+            }
+            
+            .form-input::placeholder, .form-textarea::placeholder {
+                color: rgba(255, 255, 255, 0.5);
+            }
+            
+            .btn-secondary {
+                background: rgba(255, 255, 255, 0.1);
+                color: var(--text);
+            }
+            
+            .btn-secondary:hover {
+                background: rgba(255, 255, 255, 0.15);
+            }
+            
+            .topic-content.filtered::after {
+                background: linear-gradient(to bottom, transparent, rgba(30, 30, 46, 0.8));
+            }
+            
+            .moderation-warning {
+                background: rgba(255, 193, 7, 0.2);
+            }
+            
+            .action-btn {
+                color: var(--text-light);
+            }
+        }
+
+        /* Support pour le texte plus grand (accessibilité) */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* Correction pour le défilement sur iOS */
+        @supports (-webkit-touch-callout: none) {
+            body {
+                min-height: -webkit-fill-available;
+            }
+            
+            .app-container {
+                padding-bottom: calc(100px + env(safe-area-inset-bottom));
+            }
+            
+            .bottom-nav {
+                padding-bottom: max(12px, env(safe-area-inset-bottom));
+            }
+            
+            .new-topic-btn {
+                bottom: calc(80px + env(safe-area-inset-bottom));
+            }
+        }
+
+        /* Support pour les appareils pliables */
+        @media (max-width: 768px) and (max-aspect-ratio: 3/4) {
+            .topics-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Améliorations pour les tablettes en mode paysage */
+        @media (min-width: 768px) and (max-width: 1024px) and (orientation: landscape) {
+            .topics-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 15px;
+            }
+            
+            .app-container {
+                max-width: 90%;
+            }
+        }
+
+        /* Responsive Grid pour tablettes */
+        @media (min-width: 768px) {
+            .topics-grid {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Système de notifications -->
+    <div class="notification-system" id="notificationSystem"></div>
+
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo">
+                <div class="logo-icon">
+                    <i class="fas fa-dice"></i>
+                </div>
+                <div class="logo-text">GameHub</div>
+            </div>
+            <div class="user-actions">
+                <div class="icon-btn" id="refreshTopicsBtn" title="Rafraîchir">
+                    <i class="fas fa-sync-alt"></i>
+                </div>
+                <div class="icon-btn" onclick="window.location.href='profil.html'">
+                    <i class="fas fa-user"></i>
+                </div>
+            </div>
+        </header>
+
+        <!-- Forum Header -->
+        <section class="forum-header">
+            <h1 class="forum-title">Forum GameHub</h1>
+            <p class="forum-subtitle">Discutez, partagez des stratégies et améliorez votre expérience</p>
+        </section>
+
+        <!-- Filter Tabs -->
+        <div class="filter-tabs">
+            <div class="filter-tab active" data-category="all" onclick="filterTopics('all')">
+                <i class="fas fa-globe"></i> Tous les sujets
+            </div>
+            <div class="filter-tab" data-category="feedback" onclick="filterTopics('feedback')">
+                <i class="fas fa-star"></i> Avis & Retours
+            </div>
+            <div class="filter-tab" data-category="strategy" onclick="filterTopics('strategy')">
+                <i class="fas fa-chess"></i> Stratégies
+            </div>
+            <div class="filter-tab" data-category="question" onclick="filterTopics('question')">
+                <i class="fas fa-question-circle"></i> Questions
+            </div>
+            <div class="filter-tab" data-category="improvement" onclick="filterTopics('improvement')">
+                <i class="fas fa-lightbulb"></i> Améliorations
+            </div>
+            <div class="filter-tab" data-category="discussion" onclick="filterTopics('discussion')">
+                <i class="fas fa-comments"></i> Discussions
+            </div>
+        </div>
+
+        <!-- Topics Container -->
+        <div class="topics-container">
+            <div class="topics-header">
+                <h2 class="topics-title">Discussions récentes</h2>
+                <div class="topics-count">
+                    <span id="topicsCount">0</span> sujets
+                </div>
+            </div>
+
+            <!-- Loading Indicator -->
+            <div class="loading-indicator" id="loadingIndicator">
+                <div class="loading-spinner"></div>
+                <p>Chargement des discussions...</p>
+            </div>
+
+            <!-- Topics Grid -->
+            <div class="topics-grid" id="topicsContainer">
+                <!-- Les sujets seront chargés ici dynamiquement -->
+            </div>
+        </div>
+
+        <!-- New Topic Button -->
+        <button class="new-topic-btn" id="newTopicBtn">
+            <i class="fas fa-plus"></i>
+        </button>
+    </div>
+
+    <!-- New Topic Modal -->
+    <div class="modal-overlay" id="newTopicModal">
+        <div class="new-topic-modal">
+            <div class="modal-header">
+                <button class="modal-close" id="closeNewTopicModal">
+                    <i class="fas fa-times"></i>
+                </button>
+                <h2 class="modal-title">Nouvelle discussion</h2>
+                <p class="modal-subtitle">Partagez votre expérience avec la communauté</p>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label" for="topicCategory">Catégorie *</label>
+                    <select class="form-select game-select" id="topicCategory" required>
+                        <option value="">Choisissez une catégorie</option>
+                        <option value="feedback">Avis & Retours sur GameHub</option>
+                        <option value="strategy">Stratégie d'utilisation d'un bot</option>
+                        <option value="question">Question sur la plateforme</option>
+                        <option value="improvement">Suggestion d'amélioration</option>
+                        <option value="discussion">Discussion générale</option>
+                    </select>
+                    <div class="form-help">Sélectionnez le type de discussion que vous souhaitez démarrer</div>
+                </div>
+
+                <div class="form-group" id="gameSelectGroup" style="display: none;">
+                    <label class="form-label" for="topicGame">Jeu concerné</label>
+                    <select class="form-select game-select" id="topicGame">
+                        <option value="">Tous les jeux (optionnel)</option>
+                        <option value="king-thimbles">King Thimbles</option>
+                        <option value="mines">Mines</option>
+                        <option value="luckyjet">LuckyJet</option>
+                        <option value="crime-empire">Crime Empire</option>
+                        <option value="rocket-queen">Rocket Queen</option>
+                        <option value="crash">Crash</option>
+                        <option value="rocket-x">Rocket X</option>
+                        <option value="astronaute">Astronaute</option>
+                        <option value="speed-cash">Speed & Cash</option>
+                        <option value="tropicana">Tropicana</option>
+                    </select>
+                    <div class="form-help">Sélectionnez le jeu concerné par votre stratégie</div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="topicTitle">Titre de la discussion *</label>
+                    <input type="text" class="form-input" id="topicTitle" placeholder="Ex: Excellente stratégie pour Mines" required>
+                    <div class="form-help">Soyez clair et concis dans votre titre</div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="topicContent">Message *</label>
+                    <textarea class="form-textarea" id="topicContent" placeholder="Partagez votre expérience, votre stratégie ou votre question avec la communauté..." required></textarea>
+                    <div class="form-help">
+                        <p><strong>Rappel des règles :</strong></p>
+                        <ul style="margin-left: 15px; margin-top: 5px; font-size: 12px;">
+                            <li>⚠️ Les numéros de téléphone sont interdits (même avec des sauts de ligne)</li>
+                            <li>⚠️ Les liens externes (WhatsApp, Telegram, etc.) sont interdits</li>
+                            <li>⚠️ Le langage injurieux est interdit</li>
+                            <li>⚠️ Les publicités sont interdites</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="cancelNewTopic">Annuler</button>
+                <button class="btn btn-primary" id="submitNewTopic">
+                    <i class="fas fa-paper-plane"></i> Publier la discussion
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+        <div class="nav-item" onclick="window.location.href='accueil.html'">
+            <i class="fas fa-home nav-icon"></i>
+            <span>Accueil</span>
+        </div>
+        <div class="nav-item" onclick="window.location.href='jeux.html'">
+            <i class="fas fa-gamepad nav-icon"></i>
+            <span>Mes Jeux</span>
+        </div>
+        <div class="nav-item" onclick="window.location.href='promotions.html'">
+            <i class="fas fa-gift nav-icon"></i>
+            <span>Promos</span>
+        </div>
+        <div class="nav-item active">
+            <i class="fas fa-comments nav-icon"></i>
+            <span>Forum</span>
+        </div>
+    </nav>
+
+    <script>
+        // Variables globales
+        let currentCategory = 'all';
+
+        // Animation au chargement de la page
+        document.addEventListener('DOMContentLoaded', function() {
+            // Animation des sections
+            const sections = document.querySelectorAll('.forum-header, .filter-tabs, .topics-container');
+            sections.forEach((section, index) => {
+                section.style.animation = `fadeInUp 0.5s ease forwards ${index * 0.1}s`;
+                section.style.opacity = '0';
+            });
+
+            // Interaction avec la navigation
+            const navItems = document.querySelectorAll('.nav-item');
+            navItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    navItems.forEach(n => n.classList.remove('active'));
+                    this.classList.add('active');
+                });
+            });
+
+            // Bouton de rafraîchissement
+            const refreshBtn = document.getElementById('refreshTopicsBtn');
+            refreshBtn.addEventListener('click', function() {
+                refreshBtn.style.animation = 'spin 1s linear';
+                setTimeout(() => {
+                    refreshBtn.style.animation = '';
+                }, 1000);
+                
+                loadForumTopics(currentCategory);
+                showNotification(
+                    'Forum rafraîchi',
+                    'Les discussions ont été mises à jour.',
+                    'success',
+                    3000
+                );
+            });
+
+            // Gestion de la modale de nouveau sujet
+            const newTopicBtn = document.getElementById('newTopicBtn');
+            const newTopicModal = document.getElementById('newTopicModal');
+            const closeNewTopicModalBtn = document.getElementById('closeNewTopicModal');
+            const cancelNewTopicBtn = document.getElementById('cancelNewTopic');
+            const submitNewTopicBtn = document.getElementById('submitNewTopic');
+            const topicCategorySelect = document.getElementById('topicCategory');
+            const gameSelectGroup = document.getElementById('gameSelectGroup');
+
+            // Ouvrir la modale de nouveau sujet
+            newTopicBtn.addEventListener('click', function() {
+                newTopicModal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+                
+                // Réinitialiser le formulaire
+                document.getElementById('topicTitle').value = '';
+                document.getElementById('topicContent').value = '';
+                topicCategorySelect.value = '';
+                document.getElementById('topicGame').value = '';
+                gameSelectGroup.style.display = 'none';
+            });
+
+            // Fermer la modale de nouveau sujet
+            function closeNewTopicModal() {
+                newTopicModal.classList.remove('active');
+                document.body.style.overflow = 'auto';
+            }
+
+            closeNewTopicModalBtn.addEventListener('click', closeNewTopicModal);
+            cancelNewTopicBtn.addEventListener('click', closeNewTopicModal);
+
+            // Afficher/masquer la sélection de jeu selon la catégorie
+            topicCategorySelect.addEventListener('change', function() {
+                if (this.value === 'strategy') {
+                    gameSelectGroup.style.display = 'block';
+                } else {
+                    gameSelectGroup.style.display = 'none';
+                    document.getElementById('topicGame').value = '';
+                }
+            });
+
+            // Soumettre un nouveau sujet
+            submitNewTopicBtn.addEventListener('click', async function() {
+                const category = topicCategorySelect.value;
+                const title = document.getElementById('topicTitle').value.trim();
+                const content = document.getElementById('topicContent').value.trim();
+                const gameId = document.getElementById('topicGame').value || null;
+
+                // Validation
+                if (!category) {
+                    showNotification(
+                        'Catégorie manquante',
+                        'Veuillez sélectionner une catégorie pour votre discussion.',
+                        'warning',
+                        4000
+                    );
+                    return;
+                }
+
+                if (!title) {
+                    showNotification(
+                        'Titre manquant',
+                        'Veuillez saisir un titre pour votre discussion.',
+                        'warning',
+                        4000
+                    );
+                    return;
+                }
+
+                if (title.length < 5) {
+                    showNotification(
+                        'Titre trop court',
+                        'Le titre doit contenir au moins 5 caractères.',
+                        'warning',
+                        4000
+                    );
+                    return;
+                }
+
+                if (!content) {
+                    showNotification(
+                        'Message manquant',
+                        'Veuillez saisir un message pour votre discussion.',
+                        'warning',
+                        4000
+                    );
+                    return;
+                }
+
+                if (content.length < 20) {
+                    showNotification(
+                        'Message trop court',
+                        'Le message doit contenir au moins 20 caractères.',
+                        'warning',
+                        4000
+                    );
+                    return;
+                }
+
+                // Désactiver le bouton pendant le traitement
+                submitNewTopicBtn.disabled = true;
+                submitNewTopicBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publication...';
+
+                try {
+                    // Créer le sujet avec modération automatique
+                    const topicId = await window.createNewTopic(title, content, category, gameId);
+                    
+                    if (topicId) {
+                        // Fermer la modale
+                        closeNewTopicModal();
+                        
+                        // Recharger les sujets
+                        setTimeout(() => {
+                            loadForumTopics(currentCategory);
+                        }, 1000);
+                    }
+                } catch (error) {
+                    console.error('Erreur lors de la publication:', error);
+                    showNotification('Erreur', 'Une erreur est survenue lors de la publication', 'error', 4000);
+                } finally {
+                    // Réactiver le bouton
+                    submitNewTopicBtn.disabled = false;
+                    submitNewTopicBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Publier la discussion';
+                }
+            });
+
+            // Fermer la modale en cliquant à l'extérieur
+            newTopicModal.addEventListener('click', function(e) {
+                if (e.target === newTopicModal) {
+                    closeNewTopicModal();
+                }
+            });
+
+            // Fermer avec la touche Échap
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && newTopicModal.classList.contains('active')) {
+                    closeNewTopicModal();
+                }
+            });
+
+            // Charger les sujets au démarrage (déjà fait par Firebase)
+        });
+
+        // Fonction pour filtrer les sujets par catégorie
+        function filterTopics(category) {
+            currentCategory = category;
+            
+            // Mettre à jour les onglets actifs
+            document.querySelectorAll('.filter-tab').forEach(tab => {
+                if (tab.dataset.category === category) {
+                    tab.classList.add('active');
+                } else {
+                    tab.classList.remove('active');
+                }
+            });
+            
+            // Charger les sujets filtrés
+            loadForumTopics(category);
+            
+            // Afficher une notification pour les filtres non "all"
+            if (category !== 'all') {
+                const categoryLabels = {
+                    'feedback': 'Avis & Retours',
+                    'strategy': 'Stratégies',
+                    'question': 'Questions',
+                    'improvement': 'Améliorations',
+                    'discussion': 'Discussions'
+                };
+                
+                showNotification(
+                    'Filtre appliqué',
+                    `Affichage des discussions : ${categoryLabels[category] || category}`,
+                    'info',
+                    2000
+                );
+            }
+        }
+
+        // Fonction pour charger les sujets du forum (exposée par le module Firebase)
+        async function loadForumTopics(category = 'all') {
+            // Appeler la fonction exposée par le module Firebase
+            if (window.loadForumTopics) {
+                await window.loadForumTopics(category);
+                
+                // Mettre à jour le compteur de sujets
+                const topicsContainer = document.getElementById('topicsContainer');
+                const topicsCountElement = document.getElementById('topicsCount');
+                
+                if (topicsContainer && topicsCountElement) {
+                    const topicCards = topicsContainer.querySelectorAll('.topic-card');
+                    const emptyState = topicsContainer.querySelector('.empty-state');
+                    
+                    if (emptyState) {
+                        topicsCountElement.textContent = '0';
+                    } else {
+                        topicsCountElement.textContent = topicCards.length;
+                    }
+                }
+            }
+        }
+
+        // Rafraîchir automatiquement les sujets toutes les 30 secondes
+        setInterval(() => {
+            if (window.auth && window.auth.currentUser) {
+                loadForumTopics(currentCategory);
+            }
+        }, 30000);
+    </script>
+</body>
+</html>
