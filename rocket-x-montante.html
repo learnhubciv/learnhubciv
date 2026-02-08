@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ROCKET X - Prédiction Automatique</title>
+    <link rel="stylesheet" href="rocket-x-montante.css">
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+</head>
+<body>
+    <!-- En-tête utilisateur intégré -->
+    <header class="user-header">
+        <div id="userInfo" class="user-info">
+            <div class="flex items-center">
+                <div class="user-avatar mr-2">
+                    U
+                </div>
+                <div class="text-left">
+                    <p class="user-email">Vérification en cours...</p>
+                    <p class="user-subtitle">Prédicteur Rocket X Pro</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="license-display">
+            <div id="licenseIndicator" class="license-indicator">
+                <span class="license-dot"></span>
+                <span class="license-text">Vérification licence...</span>
+            </div>
+            
+            <button onclick="logoutUser()" class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i>
+                Déconnexion
+            </button>
+        </div>
+    </header>
+    
+    <div class="stars" id="stars"></div>
+    
+    <div class="container">
+        <div class="rocket-title">
+            ROCKET X
+        </div>
+        
+        <div class="circle-wrapper">
+            <div class="circle-outer">
+                <div class="circle-inner">
+                    <span id="multiplier">0.00X</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="time" id="time">Temps: 00:00</div>
+        
+        <div class="hacks-bots">
+            🚀 PRÉDICTEUR ROCKET X PRO 🚀
+        </div>
+        
+        <div class="time" id="countdown">Prochaine prédiction: 00:00</div>
+        
+        <div class="flying-indicator" id="flyingIndicator" style="display: none;">
+            <i class="fas fa-rocket"></i> État: Vol en cours - En attente du crash
+        </div>
+        <div class="verification-indicator" id="verificationIndicator" style="display: none;">
+            <i class="fas fa-search"></i> Vérification en cours...
+        </div>
+        <div class="wait-indicator" id="waitIndicator" style="display: none;">
+            <i class="fas fa-hourglass-half"></i> ATTENTE DU PROCHAIN JEU
+        </div>
+        <div class="play-indicator" id="playIndicator" style="display: none;">
+            <i class="fas fa-play-circle"></i> JOUER - Prêt à miser!
+        </div>
+        <div class="validation-indicator" id="validationIndicator" style="display: none;">
+            <i class="fas fa-clock"></i> Validation en cours: 40s
+        </div>
+        <div class="state-check-indicator" id="stateCheckIndicator" style="display: none;">
+            <i class="fas fa-search"></i> Vérification de l'état du jeu...
+        </div>
+        
+        <div class="progress-bar-container" id="progressBarContainer" style="display: none;">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+        
+        <div class="status-indicator" id="statusIndicator">
+            <i class="fas fa-sync fa-spin"></i> Vérification de la licence...
+        </div>
+    </div>
+
+    <script type="module" src="rocket-x-montante-firebase.js"></script>
+    <script src="rocket-x-montante.js"></script>
+</body>
+</html>

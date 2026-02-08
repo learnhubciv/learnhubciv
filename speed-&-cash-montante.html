@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 Speed & Cash - Prédiction Automatique</title>
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="speed-&-cash-montante.css">
+    
+    <!-- Font Awesome -->
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+    
+    <!-- Firebase SDK -->
+    <script type="module" src="speed-&-cash-montante-firebase.js"></script>
+    
+    <!-- Script principal -->
+    <script defer src="speed-&-cash-montante.js"></script>
+</head>
+<body>
+    <!-- En-tête utilisateur intégré -->
+    <header class="user-header">
+        <div id="userInfo" class="user-info">
+            <div class="flex items-center">
+                <div class="user-avatar mr-2">
+                    U
+                </div>
+                <div class="text-left">
+                    <p class="user-email">Vérification en cours...</p>
+                    <p class="user-subtitle">Speed & Cash Pro</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="license-display">
+            <div id="licenseIndicator" class="license-indicator">
+                <span class="license-dot"></span>
+                <span class="license-text">Vérification licence...</span>
+            </div>
+            
+            <button onclick="logoutUser()" class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i>
+                Déconnexion
+            </button>
+        </div>
+    </header>
+    
+    <div class="container">
+        <div class="speed-cash-title">
+            🚀 SPEED & CASH
+        </div>
+        
+        <div class="circle-wrapper">
+            <div class="circle-outer">
+                <div class="circle-inner">
+                    <span id="coefficient">0.00</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="time" id="time">Temps: 00:00</div>
+        
+        <div class="hacks-bots">
+            🚀 PRÉDICTEUR PROFESSIONNEL 🚀
+        </div>
+        
+        <div class="time" id="countdown">Prochaine analyse: 00:00</div>
+        
+        <div class="coefficient-indicator" id="coefficientIndicator" style="display: none;">
+            <i class="fas fa-chart-line"></i> Dernier coefficient: <span id="lastCoefficient">0.00</span>
+        </div>
+        
+        <div class="analysis-indicator" id="analysisIndicator" style="display: none;">
+            <i class="fas fa-brain"></i> Analyse en cours...
+        </div>
+        
+        <div class="prediction-indicator" id="predictionIndicator" style="display: none;">
+            <i class="fas fa-bullseye"></i> Prédiction active: <span id="currentPrediction">0.00</span>
+        </div>
+        
+        <div class="verification-indicator" id="verificationIndicator" style="display: none;">
+            <i class="fas fa-check-circle"></i> Vérification: <span id="verificationStatus">En attente</span>
+        </div>
+        
+        <div class="status-indicator" id="statusIndicator">
+            <i class="fas fa-sync fa-spin"></i> Vérification de la licence...
+        </div>
+    </div>
+</body>
+</html>
