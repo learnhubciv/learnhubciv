@@ -75,7 +75,7 @@ async function checkUserLicense(userId) {
         // Chercher toutes les licences pour 'crimeempire'
         const q = query(
             userPurchasesRef,
-            where('gameId', '==', 'crime-empire')
+            where('gameId', '==', 'crimeempire')
         );
         
         console.log("Exécution de la requête Firestore...");
