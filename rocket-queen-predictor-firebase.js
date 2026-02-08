@@ -75,7 +75,7 @@ async function checkUserLicense(userId) {
         // Chercher toutes les licences pour 'rocketqueen'
         const q = query(
             userPurchasesRef,
-            where('gameId', '==', 'rocketqueen')
+            where('gameId', '==', 'rocket-queen')
         );
         
         console.log("Exécution de la requête Firestore...");
