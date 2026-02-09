@@ -2,11 +2,11 @@
   "name": "GameHub - Plateforme Gaming Premium",
   "short_name": "GameHub",
   "description": "Prédictions, bots intelligents et jeux avec commissions élevées. Votre hub gaming ultime!",
-  "start_url": "/",
+  "start_url": "/index.html",
   "display": "standalone",
   "background_color": "#1A1A2E",
   "theme_color": "#8A2BE2",
-  "orientation": "portrait",
+  "orientation": "portrait-primary",
   "scope": "/",
   "icons": [
     {
@@ -50,32 +50,6 @@
       "type": "image/png"
     }
   ],
-  "shortcuts": [
-    {
-      "name": "Accueil",
-      "short_name": "Accueil",
-      "description": "Accéder à l'accueil principal",
-      "url": "/accueil.html",
-      "icons": [
-        {
-          "src": "icons/home-icon.png",
-          "sizes": "96x96"
-        }
-      ]
-    },
-    {
-      "name": "Jeux Rapides",
-      "short_name": "Jeux",
-      "description": "Accéder directement aux jeux",
-      "url": "/jeux.html",
-      "icons": [
-        {
-          "src": "icons/games-icon.png",
-          "sizes": "96x96"
-        }
-      ]
-    }
-  ],
-  "categories": ["entertainment", "games", "finance"],
+  "categories": ["entertainment", "games"],
   "prefer_related_applications": false
 }
