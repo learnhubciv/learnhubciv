@@ -613,24 +613,57 @@
                     card.style.animationDelay = `${index * 0.1}s`;
                     card.dataset.gameId = item.id;
                     
-                    // Vérifier si la licence est toujours active au moment du clic
-                    card.onclick = () => {
-                        if (item.expirationDate > new Date()) {
-                            window.location.href = variante.url;
-                        } else {
-                            showNotification('Licence expirée', 'Renouvelez votre abonnement pour accéder à ce jeu', 'warning', 3000);
-                        }
-                    };
+                    // Vérifier si c'est une carte "Hack" ou "Montante" de bookmaker
+                    const isHack = variante.name.toLowerCase().includes('hack');
+                    const isBookmakerMontante = item.type === 'bookmaker' && variante.name.toLowerCase().includes('montante');
+                    const isInDevelopment = isHack || isBookmakerMontante;
                     
-                    card.innerHTML = `
+                    if (isInDevelopment) {
+                        card.classList.add('in-development');
+                        
+                        // Ajouter l'overlay
+                        const overlay = document.createElement('div');
+                        overlay.className = 'game-overlay';
+                        overlay.innerHTML = `
+                            <div class="overlay-icon">
+                                <i class="fas fa-tools"></i>
+                            </div>
+                            <div class="overlay-title">En développement</div>
+                            <div class="overlay-text">Bientôt disponible</div>
+                        `;
+                        
+                        // Gestionnaire de clic pour les cartes en développement
+                        card.onclick = (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            showNotification('En développement', 'Cette fonctionnalité sera bientôt disponible', 'info', 3000);
+                        };
+                        
+                        card.appendChild(overlay);
+                    } else if (item.expirationDate > new Date()) {
+                        // Comportement normal pour les licences actives
+                        card.onclick = () => {
+                            window.location.href = variante.url;
+                        };
+                    } else {
+                        // Comportement pour les licences expirées
+                        card.onclick = () => {
+                            showNotification('Licence expirée', 'Renouvelez votre abonnement pour accéder à ce jeu', 'warning', 3000);
+                        };
+                    }
+                    
+                    // Contenu de la carte
+                    card.innerHTML += `
                         ${item.type === 'bookmaker' ? '<div class="type-badge">BOOKMAKER</div>' : ''}
-                        <div class="license-indicator active">
-                            <i class="fas fa-check-circle"></i>
-                            <span>ACTIF</span>
+                        <div class="license-indicator ${item.expirationDate > new Date() ? 'active' : 'expired'}">
+                            <i class="fas ${item.expirationDate > new Date() ? 'fa-check-circle' : 'fa-times-circle'}"></i>
+                            <span>${item.expirationDate > new Date() ? 'ACTIF' : 'EXPIRÉ'}</span>
                         </div>
                         <img src="${item.image}" alt="${variante.name}" class="game-image">
                         <h3 class="game-title">${variante.name}</h3>
-                        <div class="play-button">▶ JOUER</div>
+                        <div class="play-button ${item.expirationDate > new Date() ? '' : 'expired'} ${isInDevelopment ? 'in-development' : ''}">
+                            ${isInDevelopment ? 'EN DEV' : (item.expirationDate > new Date() ? '▶ JOUER' : 'EXPIRÉ')}
+                        </div>
                     `;
                     
                     grid.appendChild(card);
@@ -678,8 +711,35 @@
                         const card = document.createElement('div');
                         card.className = `game-card expired ${item.type === 'bookmaker' ? 'bookmaker-card' : ''}`;
                         card.style.animationDelay = `${index * 0.1}s`;
+                        
+                        // Vérifier si c'est une carte "Hack" ou "Montante" de bookmaker
+                        const isHack = variante.name.toLowerCase().includes('hack');
+                        const isBookmakerMontante = item.type === 'bookmaker' && variante.name.toLowerCase().includes('montante');
+                        const isInDevelopment = isHack || isBookmakerMontante;
+                        
+                        if (isInDevelopment) {
+                            card.classList.add('in-development');
+                            
+                            // Ajouter l'overlay même pour les cartes expirées
+                            const overlay = document.createElement('div');
+                            overlay.className = 'game-overlay';
+                            overlay.innerHTML = `
+                                <div class="overlay-icon">
+                                    <i class="fas fa-tools"></i>
+                                </div>
+                                <div class="overlay-title">En développement</div>
+                                <div class="overlay-text">Bientôt disponible</div>
+                            `;
+                            
+                            card.appendChild(overlay);
+                        }
+                        
                         card.onclick = () => {
-                            showNotification('Licence expirée', 'Renouvelez votre abonnement pour accéder à ce jeu', 'warning', 3000);
+                            if (isInDevelopment) {
+                                showNotification('En développement', 'Cette fonctionnalité sera bientôt disponible', 'info', 3000);
+                            } else {
+                                showNotification('Licence expirée', 'Renouvelez votre abonnement pour accéder à ce jeu', 'warning', 3000);
+                            }
                         };
                         
                         card.innerHTML = `
@@ -690,7 +750,9 @@
                             </div>
                             <img src="${item.image}" alt="${variante.name}" class="game-image">
                             <h3 class="game-title">${variante.name}</h3>
-                            <div class="play-button expired">EXPIRÉ</div>
+                            <div class="play-button expired ${isInDevelopment ? 'in-development' : ''}">
+                                ${isInDevelopment ? 'EN DEV' : 'EXPIRÉ'}
+                            </div>
                         `;
                         
                         grid.appendChild(card);
@@ -936,6 +998,16 @@
             box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
         }
 
+        .game-card.in-development {
+            cursor: not-allowed;
+            position: relative;
+        }
+        
+        .game-card.in-development:hover {
+            transform: none !important;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15) !important;
+        }
+
         .game-image {
             width: 100%;
             height: 100px;
@@ -992,6 +1064,17 @@
             background: #6c757d;
             transform: none;
             box-shadow: none;
+        }
+
+        .play-button.in-development {
+            background: #6c757d !important;
+            cursor: not-allowed;
+        }
+
+        .play-button.in-development:hover {
+            background: #6c757d !important;
+            transform: none !important;
+            box-shadow: none !important;
         }
 
         /* Indicateur de licence */
@@ -1213,6 +1296,49 @@
             font-size: 3rem;
             margin-bottom: 15px;
             color: var(--primary);
+        }
+
+        /* Overlay pour les cartes en développement */
+        .game-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            padding: 15px;
+            text-align: center;
+            opacity: 1;
+            transition: opacity 0.3s ease;
+        }
+        
+        .bookmaker-card.in-development .game-overlay {
+            background: rgba(0, 0, 0, 0.85);
+        }
+        
+        .overlay-icon {
+            font-size: 2rem;
+            color: #FFC107;
+            margin-bottom: 10px;
+        }
+        
+        .overlay-title {
+            font-size: 1.1rem;
+            color: white;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .overlay-text {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.8);
+            line-height: 1.4;
         }
 
         /* Modale d'expiration de session - VERSION AMÉLIORÉE */
@@ -1862,14 +1988,3 @@
     </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
