@@ -544,9 +544,21 @@
 
     <script>
         // Variables globales
-        let deferredPrompt;
+        let deferredPrompt = null;
         let loadingComplete = false;
         let progressInterval;
+
+        // 1️⃣ Écouter beforeinstallprompt IMMÉDIATEMENT (CORRECTION CRITIQUE)
+        window.addEventListener('beforeinstallprompt', (e) => {
+            console.log('✅ Événement beforeinstallprompt déclenché !');
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            // Mettre à jour l'interface si le chargement est déjà terminé
+            if (loadingComplete) {
+                updateInstallButtonUI();
+            }
+        });
 
         // Créer des particules animées
         function createParticles() {
@@ -587,8 +599,8 @@
             ];
 
             let progress = 0;
-            const totalTime = 4000; // 4 secondes au total
-            const intervalTime = 30; // Plus fluide
+            const totalTime = 4000;
+            const intervalTime = 30;
             const steps = totalTime / intervalTime;
             const increment = 100 / steps;
             
@@ -651,11 +663,85 @@
             // Afficher les boutons d'action
             setTimeout(() => {
                 actionsContainer.classList.add('show');
-                setupPWAInstall(); // Configurer l'installation PWA maintenant
+                updateInstallButtonUI(); // Mettre à jour l'interface d'installation
             }, 500);
             
             // Petite animation de célébration
             celebrateCompletion();
+        }
+
+        // Mettre à jour l'interface du bouton d'installation
+        function updateInstallButtonUI() {
+            const installButton = document.getElementById('installButton');
+            const installInstructions = document.getElementById('installInstructions');
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                                 window.navigator.standalone;
+            
+            // Si déjà installé
+            if (isStandalone) {
+                installButton.style.display = 'none';
+                installInstructions.classList.add('show');
+                installInstructions.innerHTML = '<h4><i class="fas fa-check-circle"></i> Application déjà installée</h4><p>GameHub est installé sur votre appareil !</p>';
+                return;
+            }
+            
+            // Si l'installation native est disponible
+            if (deferredPrompt) {
+                installButton.innerHTML = '<i class="fas fa-download"></i> Installer l\'App (Gratuit)';
+                installButton.style.display = 'flex';
+                installInstructions.classList.remove('show');
+            } else {
+                // Sinon, montrer les instructions manuelles
+                installButton.innerHTML = '<i class="fas fa-mobile-alt"></i> Ajouter à l\'écran d\'accueil';
+                installInstructions.classList.add('show');
+            }
+        }
+
+        // Gérer le clic sur le bouton d'installation
+        function handleInstallClick() {
+            console.log('🖱️ Clic sur le bouton d\'installation');
+            
+            if (deferredPrompt) {
+                console.log('🚀 Lancement de l\'installation native...');
+                
+                deferredPrompt.prompt();
+                
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('✅ Utilisateur a accepté l\'installation');
+                        
+                        // Mettre à jour l'interface
+                        const installButton = document.getElementById('installButton');
+                        const installInstructions = document.getElementById('installInstructions');
+                        
+                        installButton.innerHTML = '<i class="fas fa-check"></i> Installation réussie !';
+                        installButton.style.background = 'var(--success)';
+                        installButton.style.borderColor = 'var(--success)';
+                        installButton.disabled = true;
+                        installInstructions.style.display = 'none';
+                    } else {
+                        console.log('❌ Utilisateur a refusé l\'installation');
+                        
+                        // Animation de feedback
+                        const installButton = document.getElementById('installButton');
+                        installButton.classList.add('shake');
+                        setTimeout(() => installButton.classList.remove('shake'), 500);
+                    }
+                    
+                    deferredPrompt = null;
+                });
+            } else {
+                console.log('ℹ️ Installation native non disponible, affichage des instructions');
+                
+                // Montrer les instructions manuelles
+                const installInstructions = document.getElementById('installInstructions');
+                installInstructions.classList.add('show');
+                
+                // Animation de feedback
+                const installButton = document.getElementById('installButton');
+                installButton.classList.add('shake');
+                setTimeout(() => installButton.classList.remove('shake'), 500);
+            }
         }
 
         // Animation de célébration
@@ -698,94 +784,14 @@
             }, 3000);
         }
 
-        // Gestion de l'installation PWA - CORRIGÉE
-        function setupPWAInstall() {
-            const installButton = document.getElementById('installButton');
-            const installInstructions = document.getElementById('installInstructions');
-            const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
-                                 window.navigator.standalone;
-            
-            // Si déjà installé, ne pas afficher le bouton d'installation
-            if (isStandalone) {
-                installButton.style.display = 'none';
-                installInstructions.classList.add('show');
-                installInstructions.innerHTML = '<h4><i class="fas fa-check-circle"></i> Application déjà installée</h4><p>GameHub est installé sur votre appareil !</p>';
-                return;
-            }
-            
-            // Vérifier si on peut installer
-            let canInstall = false;
-            
-            // Événement d'installation PWA (pour Chrome/Android)
-            window.addEventListener('beforeinstallprompt', (e) => {
-                e.preventDefault();
-                deferredPrompt = e;
-                canInstall = true;
-                console.log('✅ Installation PWA disponible');
-                
-                // Mettre à jour le texte du bouton
-                installButton.innerHTML = '<i class="fas fa-download"></i> Installer l\'App';
-            });
-            
-            // Gestion du clic sur le bouton d'installation
-            installButton.addEventListener('click', async () => {
-                console.log('Clic sur le bouton d\'installation');
-                
-                if (deferredPrompt && canInstall) {
-                    // Installation native disponible
-                    console.log('Lancement de l\'installation...');
-                    
-                    deferredPrompt.prompt();
-                    const { outcome } = await deferredPrompt.userChoice;
-                    
-                    if (outcome === 'accepted') {
-                        console.log('✅ Utilisateur a installé la PWA');
-                        installButton.innerHTML = '<i class="fas fa-check"></i> Installation réussie !';
-                        installButton.style.background = 'var(--success)';
-                        installButton.style.borderColor = 'var(--success)';
-                        installButton.disabled = true;
-                        
-                        // Masquer les instructions
-                        installInstructions.style.display = 'none';
-                    } else {
-                        console.log('❌ Utilisateur a refusé l\'installation');
-                        installButton.classList.add('shake');
-                        setTimeout(() => installButton.classList.remove('shake'), 500);
-                        
-                        // Montrer les instructions
-                        installInstructions.classList.add('show');
-                    }
-                    
-                    deferredPrompt = null;
-                    canInstall = false;
-                } else {
-                    // Pas d'installation native, montrer les instructions
-                    console.log('Installation native non disponible, affichage des instructions');
-                    installInstructions.classList.add('show');
-                    
-                    // Animation de feedback
-                    installButton.classList.add('shake');
-                    setTimeout(() => installButton.classList.remove('shake'), 500);
-                }
-            });
-            
-            // Si pas d'installation native après 2 secondes, adapter le bouton
-            setTimeout(() => {
-                if (!canInstall) {
-                    console.log('Installation native non détectée');
-                    installButton.innerHTML = '<i class="fas fa-mobile-alt"></i> Ajouter à l\'écran d\'accueil';
-                    installInstructions.classList.add('show');
-                }
-            }, 2000);
-        }
-
-        // Enregistrement du Service Worker
+        // Enregistrement du Service Worker (chemin relatif)
         function registerServiceWorker() {
             if ('serviceWorker' in navigator) {
                 window.addEventListener('load', () => {
-                    navigator.serviceWorker.register('/service-worker.js')
+                    // Utilise un chemin relatif pour plus de sécurité
+                    navigator.serviceWorker.register('./service-worker.js')
                         .then(registration => {
-                            console.log('✅ Service Worker enregistré:', registration.scope);
+                            console.log('✅ Service Worker enregistré avec succès:', registration.scope);
                         })
                         .catch(error => {
                             console.log('❌ Erreur Service Worker:', error);
@@ -796,6 +802,10 @@
 
         // Initialisation
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Initialisation de GameHub...');
+            console.log('📱 Mode standalone?', window.matchMedia('(display-mode: standalone)').matches);
+            console.log('🛠️ Service Worker supporté?', 'serviceWorker' in navigator);
+            
             createParticles();
             registerServiceWorker();
             
@@ -817,6 +827,9 @@
                 }, 500);
             });
             
+            // Clic sur le bouton d'installation
+            document.getElementById('installButton').addEventListener('click', handleInstallClick);
+            
             // Clic sur le logo pour fun
             document.getElementById('logoCenter').addEventListener('click', function() {
                 if (loadingComplete) {
@@ -831,12 +844,13 @@
                 }
             });
             
-            // Forcer l'affichage du bouton d'installation pour le test
+            // Log supplémentaire pour débogage
             setTimeout(() => {
-                const installButton = document.getElementById('installButton');
-                if (installButton.style.display !== 'none') {
-                    console.log('Bouton d\'installation visible et fonctionnel');
-                }
+                console.log('🔍 État PWA:', {
+                    deferredPrompt: !!deferredPrompt,
+                    loadingComplete: loadingComplete,
+                    isStandalone: window.matchMedia('(display-mode: standalone)').matches
+                });
             }, 1000);
         });
     </script>
