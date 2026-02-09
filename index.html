@@ -43,17 +43,24 @@
             background: linear-gradient(135deg, #1A1A2E 0%, #16213E 50%, #0F3460 100%);
             color: var(--light);
             min-height: 100vh;
-            overflow: hidden;
+            overflow-x: hidden;
             display: flex;
             align-items: center;
             justify-content: center;
             -webkit-tap-highlight-color: transparent;
+            padding: 20px;
         }
 
         .loading-container {
             text-align: center;
-            max-width: 400px;
-            padding: 20px;
+            max-width: 450px;
+            padding: 30px;
+            background: rgba(26, 26, 46, 0.8);
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(138, 43, 226, 0.3);
+            position: relative;
+            z-index: 10;
         }
 
         /* Logo animation */
@@ -106,8 +113,13 @@
             color: white;
             box-shadow: 0 0 30px rgba(138, 43, 226, 0.5);
             z-index: 2;
-            transition: transform 0.3s ease;
+            transition: all 0.3s ease;
             cursor: pointer;
+        }
+
+        .logo-center:hover {
+            transform: translate(-50%, -50%) scale(1.1);
+            box-shadow: 0 0 40px rgba(138, 43, 226, 0.7);
         }
 
         /* Pulsating dots */
@@ -138,8 +150,8 @@
 
         /* Text animation */
         .loading-text {
-            font-size: 1.4rem;
-            font-weight: 600;
+            font-size: 1.5rem;
+            font-weight: 700;
             margin-bottom: 10px;
             background: linear-gradient(to right, var(--primary), var(--accent), var(--secondary));
             -webkit-background-clip: text;
@@ -150,16 +162,17 @@
         }
 
         .loading-subtext {
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.95rem;
             margin-top: 5px;
             transition: opacity 0.3s ease;
+            min-height: 20px;
         }
 
         /* Progress bar */
         .progress-container {
             width: 100%;
-            height: 4px;
+            height: 6px;
             background: rgba(255, 255, 255, 0.1);
             border-radius: 10px;
             margin: 25px 0;
@@ -171,14 +184,14 @@
             background: linear-gradient(to right, var(--primary), var(--accent));
             border-radius: 10px;
             width: 0%;
-            transition: width 0.3s ease;
+            transition: width 0.5s ease;
         }
 
         /* Stats preview */
         .stats-preview {
             display: flex;
             justify-content: center;
-            gap: 20px;
+            gap: 25px;
             margin-top: 30px;
             opacity: 0;
             animation: fadeIn 0.5s ease 1s forwards;
@@ -186,18 +199,22 @@
 
         .stat-preview {
             text-align: center;
+            padding: 10px 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            min-width: 80px;
         }
 
         .stat-preview-value {
-            font-size: 1.2rem;
-            font-weight: 700;
+            font-size: 1.3rem;
+            font-weight: 800;
             color: var(--accent);
-            margin-bottom: 3px;
+            margin-bottom: 5px;
         }
 
         .stat-preview-label {
-            font-size: 0.7rem;
-            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.7);
         }
 
         /* Particles background */
@@ -208,7 +225,7 @@
             width: 100%;
             height: 100%;
             pointer-events: none;
-            z-index: -1;
+            z-index: 1;
         }
 
         .particle {
@@ -227,36 +244,111 @@
             background: var(--secondary);
         }
 
-        /* PWA Install Button (hidden by default) */
-        .install-button {
-            position: fixed;
-            bottom: 70px;
-            right: 20px;
-            background: linear-gradient(135deg, var(--primary), var(--accent));
-            color: white;
-            border: none;
-            border-radius: 50px;
-            padding: 12px 20px;
-            font-size: 14px;
-            font-weight: 600;
+        /* Action Buttons Container */
+        .actions-container {
+            margin-top: 30px;
             display: flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-            box-shadow: 0 4px 20px rgba(138, 43, 226, 0.4);
-            z-index: 1000;
+            flex-direction: column;
+            gap: 15px;
             opacity: 0;
             transform: translateY(20px);
-            transition: all 0.3s ease;
+            transition: all 0.5s ease;
         }
 
-        .install-button.show {
+        .actions-container.show {
             opacity: 1;
             transform: translateY(0);
         }
 
+        /* Continue Button */
+        .continue-button {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 16px 40px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 5px 20px rgba(138, 43, 226, 0.4);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin: 10px auto;
+            min-width: 250px;
+        }
+
+        .continue-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(138, 43, 226, 0.6);
+        }
+
+        .continue-button i {
+            font-size: 18px;
+        }
+
+        /* Install Button */
+        .install-button {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--accent);
+            border: 2px solid var(--accent);
+            border-radius: 50px;
+            padding: 14px 30px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin: 5px auto;
+            min-width: 250px;
+            backdrop-filter: blur(10px);
+        }
+
+        .install-button:hover {
+            background: var(--accent);
+            color: var(--dark);
+            transform: translateY(-3px);
+        }
+
         .install-button i {
             font-size: 16px;
+        }
+
+        /* Install Instructions */
+        .install-instructions {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 15px;
+            padding: 15px;
+            margin-top: 20px;
+            border-left: 4px solid var(--accent);
+            text-align: left;
+            display: none;
+        }
+
+        .install-instructions.show {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .install-instructions h4 {
+            color: var(--accent);
+            margin-bottom: 10px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .install-instructions p {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 12px;
+            margin: 5px 0;
+            line-height: 1.4;
         }
 
         /* Animations */
@@ -312,22 +404,11 @@
             }
         }
 
-        /* Animation de fin de chargement */
-        @keyframes fadeOut {
-            to {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
-        }
-        
-        .fade-out {
-            animation: fadeOut 0.5s ease forwards;
-        }
-
         /* Responsive */
         @media (max-width: 480px) {
             .loading-container {
-                max-width: 90%;
+                max-width: 95%;
+                padding: 20px;
             }
 
             .logo-wrapper {
@@ -342,30 +423,21 @@
             }
 
             .loading-text {
-                font-size: 1.2rem;
+                font-size: 1.3rem;
             }
 
             .stats-preview {
                 gap: 15px;
             }
 
-            .install-button {
-                bottom: 60px;
-                right: 10px;
-                padding: 10px 16px;
-                font-size: 13px;
+            .stat-preview {
+                padding: 8px 10px;
+                min-width: 70px;
             }
-        }
 
-        /* PWA specific styles */
-        @media (display-mode: standalone) {
-            body {
-                padding-top: env(safe-area-inset-top);
-                padding-bottom: env(safe-area-inset-bottom);
-            }
-            
-            .gamehub-brand {
-                padding-bottom: calc(20px + env(safe-area-inset-bottom));
+            .continue-button, .install-button {
+                min-width: 200px;
+                padding: 14px 25px;
             }
         }
 
@@ -380,6 +452,7 @@
             color: rgba(255, 255, 255, 0.5);
             animation: fadeIn 0.5s ease 1.5s forwards;
             opacity: 0;
+            z-index: 10;
         }
 
         .gamehub-brand span {
@@ -392,18 +465,13 @@
     <!-- Particles background -->
     <div class="particles" id="particles"></div>
 
-    <!-- PWA Install Button (will be shown when appropriate) -->
-    <button class="install-button" id="installButton">
-        <i class="fas fa-download"></i> Installer l'App
-    </button>
-
     <div class="loading-container" id="loadingContainer">
         <!-- Animated logo -->
         <div class="logo-wrapper">
             <div class="logo-circle"></div>
             <div class="logo-circle"></div>
             <div class="logo-circle"></div>
-            <div class="logo-center">
+            <div class="logo-center" id="logoCenter">
                 <i class="fas fa-dice"></i>
             </div>
         </div>
@@ -439,6 +507,23 @@
                 <div class="stat-preview-label">Gains</div>
             </div>
         </div>
+
+        <!-- Action Buttons (hidden initially) -->
+        <div class="actions-container" id="actionsContainer">
+            <button class="continue-button" id="continueButton">
+                <i class="fas fa-play"></i> Accéder à GameHub
+            </button>
+            
+            <button class="install-button" id="installButton">
+                <i class="fas fa-download"></i> Installer l'Application
+            </button>
+            
+            <div class="install-instructions" id="installInstructions">
+                <h4><i class="fas fa-info-circle"></i> Comment installer :</h4>
+                <p><strong>Android/Chrome :</strong> Menu (⋮) → "Installer l'application"</p>
+                <p><strong>iOS/Safari :</strong> Partager (⎙) → "Sur l'écran d'accueil"</p>
+            </div>
+        </div>
     </div>
 
     <!-- Branding -->
@@ -449,26 +534,23 @@
     <script>
         // Variables globales
         let deferredPrompt;
-        let startTime = Date.now();
+        let loadingComplete = false;
+        let progressInterval;
 
         // Créer des particules animées
         function createParticles() {
             const particlesContainer = document.getElementById('particles');
-            const particleCount = 15;
+            const particleCount = 20;
 
             for (let i = 0; i < particleCount; i++) {
                 const particle = document.createElement('div');
                 particle.className = 'particle';
                 
-                // Taille aléatoire
-                const size = Math.random() * 10 + 5;
+                const size = Math.random() * 15 + 5;
                 particle.style.width = `${size}px`;
                 particle.style.height = `${size}px`;
-                
-                // Position aléatoire
                 particle.style.left = `${Math.random() * 100}%`;
                 
-                // Animation aléatoire
                 const duration = Math.random() * 20 + 10;
                 const delay = Math.random() * 5;
                 particle.style.animationDuration = `${duration}s`;
@@ -478,112 +560,191 @@
             }
         }
 
-        // Simuler un chargement progressif sur 3 secondes
+        // Simuler un chargement progressif
         function simulateLoading() {
             const progressBar = document.getElementById('progressBar');
             const loadingText = document.getElementById('loadingText');
             const loadingSubtext = document.getElementById('loadingSubtext');
-            const loadingContainer = document.getElementById('loadingContainer');
+            const actionsContainer = document.getElementById('actionsContainer');
             
             const texts = [
                 {main: "Chargement GameHub", sub: "Préparation de votre expérience gaming ultime"},
                 {main: "Initialisation des bots", sub: "Optimisation en cours..."},
                 {main: "Préparation des jeux", sub: "Chargement des ressources..."},
                 {main: "Optimisation des gains", sub: "Configuration des paramètres..."},
-                {main: "Presque terminé...", sub: "Redirection imminente..."}
+                {main: "Chargement terminé !", sub: "Prêt à générer des gains !"}
             ];
 
             let progress = 0;
-            const totalTime = 3000;
-            const intervalTime = 50;
+            const totalTime = 4000; // 4 secondes au total
+            const intervalTime = 30; // Plus fluide
             const steps = totalTime / intervalTime;
             const increment = 100 / steps;
             
             let textIndex = 0;
             
-            const interval = setInterval(() => {
+            progressInterval = setInterval(() => {
                 progress += increment;
-                progressBar.style.width = `${progress}%`;
+                progressBar.style.width = `${Math.min(progress, 100)}%`;
                 
                 // Changer le texte à certains pourcentages
                 if (progress >= 20 && progress < 40 && textIndex < 1) {
                     textIndex = 1;
-                    loadingText.textContent = texts[1].main;
-                    loadingSubtext.textContent = texts[1].sub;
+                    updateLoadingText(texts[1]);
                 } else if (progress >= 40 && progress < 60 && textIndex < 2) {
                     textIndex = 2;
-                    loadingText.textContent = texts[2].main;
-                    loadingSubtext.textContent = texts[2].sub;
+                    updateLoadingText(texts[2]);
                 } else if (progress >= 60 && progress < 80 && textIndex < 3) {
                     textIndex = 3;
-                    loadingText.textContent = texts[3].main;
-                    loadingSubtext.textContent = texts[3].sub;
-                } else if (progress >= 80 && progress < 100 && textIndex < 4) {
+                    updateLoadingText(texts[3]);
+                } else if (progress >= 100 && textIndex < 4) {
                     textIndex = 4;
-                    loadingText.textContent = texts[4].main;
-                    loadingSubtext.textContent = texts[4].sub;
-                }
-                
-                if (progress >= 100) {
-                    clearInterval(interval);
-                    progressBar.style.width = '100%';
-                    
-                    // Ajouter un effet de fondu à la sortie
-                    loadingContainer.classList.add('fade-out');
-                    
-                    // Redirection vers la page de connexion après un court délai
-                    setTimeout(() => {
-                        window.location.href = 'login.html';
-                    }, 500);
+                    completeLoading();
                 }
             }, intervalTime);
+        }
+
+        // Mettre à jour le texte de chargement
+        function updateLoadingText(text) {
+            const loadingText = document.getElementById('loadingText');
+            const loadingSubtext = document.getElementById('loadingSubtext');
+            
+            loadingText.style.opacity = 0;
+            loadingSubtext.style.opacity = 0;
+            
+            setTimeout(() => {
+                loadingText.textContent = text.main;
+                loadingSubtext.textContent = text.sub;
+                loadingText.style.opacity = 1;
+                loadingSubtext.style.opacity = 1;
+            }, 300);
+        }
+
+        // Terminer le chargement
+        function completeLoading() {
+            clearInterval(progressInterval);
+            loadingComplete = true;
+            
+            const progressBar = document.getElementById('progressBar');
+            const actionsContainer = document.getElementById('actionsContainer');
+            const loadingText = document.getElementById('loadingText');
+            const loadingSubtext = document.getElementById('loadingSubtext');
+            
+            // Mettre à jour le texte final
+            loadingText.textContent = "Prêt à jouer !";
+            loadingSubtext.textContent = "GameHub est prêt à vous faire gagner";
+            
+            // Animation de la barre de progression terminée
+            progressBar.style.background = "linear-gradient(to right, #28A745, #00FF88)";
+            
+            // Afficher les boutons d'action
+            setTimeout(() => {
+                actionsContainer.classList.add('show');
+                setupPWAInstall(); // Configurer l'installation PWA maintenant
+            }, 500);
+            
+            // Petite animation de célébration
+            celebrateCompletion();
+        }
+
+        // Animation de célébration
+        function celebrateCompletion() {
+            const logoCenter = document.getElementById('logoCenter');
+            
+            // Animation du logo
+            logoCenter.style.animation = "pulse 1s ease 3";
+            
+            // Ajouter quelques particules supplémentaires
+            for (let i = 0; i < 10; i++) {
+                setTimeout(() => {
+                    createCelebrationParticle();
+                }, i * 100);
+            }
+        }
+
+        // Créer une particule de célébration
+        function createCelebrationParticle() {
+            const particlesContainer = document.getElementById('particles');
+            const logoCenter = document.getElementById('logoCenter');
+            const rect = logoCenter.getBoundingClientRect();
+            
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            particle.style.width = '8px';
+            particle.style.height = '8px';
+            particle.style.left = `${rect.left + rect.width/2}px`;
+            particle.style.top = `${rect.top + rect.height/2}px`;
+            particle.style.background = Math.random() > 0.5 ? 'var(--primary)' : 'var(--accent)';
+            particle.style.animation = 'float 3s ease-out forwards';
+            
+            particlesContainer.appendChild(particle);
+            
+            // Supprimer après animation
+            setTimeout(() => {
+                if (particle.parentNode) {
+                    particle.parentNode.removeChild(particle);
+                }
+            }, 3000);
         }
 
         // Gestion de l'installation PWA
         function setupPWAInstall() {
             const installButton = document.getElementById('installButton');
+            const installInstructions = document.getElementById('installInstructions');
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                                 window.navigator.standalone;
             
-            // Événement déclenché quand le navigateur peut installer la PWA
+            // Si déjà installé ou sur iOS, afficher les instructions
+            if (isStandalone) {
+                installButton.style.display = 'none';
+                installInstructions.classList.add('show');
+                installInstructions.innerHTML = '<h4><i class="fas fa-check-circle"></i> Application déjà installée</h4><p>GameHub est installé sur votre appareil !</p>';
+                return;
+            }
+            
+            // Pour iOS, toujours montrer les instructions
+            if (isIOS) {
+                installButton.innerHTML = '<i class="fas fa-mobile-alt"></i> Installer sur iOS';
+                installInstructions.classList.add('show');
+            }
+            
+            // Événement d'installation PWA (pour Chrome/Android)
             window.addEventListener('beforeinstallprompt', (e) => {
                 e.preventDefault();
                 deferredPrompt = e;
                 
-                // Afficher le bouton d'installation après 2 secondes
-                setTimeout(() => {
-                    installButton.classList.add('show');
-                }, 2000);
+                // Montrer le bouton d'installation
+                installButton.style.display = 'flex';
+                
+                // Gestion du clic
+                installButton.addEventListener('click', async () => {
+                    if (deferredPrompt) {
+                        deferredPrompt.prompt();
+                        const { outcome } = await deferredPrompt.userChoice;
+                        
+                        if (outcome === 'accepted') {
+                            console.log('✅ Utilisateur a installé la PWA');
+                            installButton.innerHTML = '<i class="fas fa-check"></i> Installation réussie !';
+                            installButton.style.background = 'var(--success)';
+                            installButton.style.borderColor = 'var(--success)';
+                            installButton.disabled = true;
+                        }
+                        
+                        deferredPrompt = null;
+                    } else {
+                        // Si pas d'installation native, montrer les instructions
+                        installInstructions.classList.add('show');
+                    }
+                });
             });
             
-            // Cacher le bouton si l'app est déjà installée
-            window.addEventListener('appinstalled', () => {
-                console.log('🎉 GameHub installé avec succès!');
-                installButton.classList.remove('show');
-                deferredPrompt = null;
-            });
-            
-            // Gestion du clic sur le bouton d'installation
-            installButton.addEventListener('click', async () => {
-                if (!deferredPrompt) return;
-                
-                deferredPrompt.prompt();
-                const { outcome } = await deferredPrompt.userChoice;
-                
-                if (outcome === 'accepted') {
-                    console.log('✅ L\'utilisateur a installé la PWA');
-                } else {
-                    console.log('❌ L\'utilisateur a refusé l\'installation');
+            // Si pas d'événement beforeinstallprompt après 1 seconde, montrer les instructions
+            setTimeout(() => {
+                if (!deferredPrompt) {
+                    installInstructions.classList.add('show');
                 }
-                
-                deferredPrompt = null;
-                installButton.classList.remove('show');
-            });
-            
-            // Vérifier si l'app est déjà installée
-            if (window.matchMedia('(display-mode: standalone)').matches || 
-                window.navigator.standalone) {
-                console.log('📱 GameHub est déjà installée');
-                installButton.style.display = 'none';
-            }
+            }, 1000);
         }
 
         // Enregistrement du Service Worker
@@ -593,21 +754,6 @@
                     navigator.serviceWorker.register('/service-worker.js')
                         .then(registration => {
                             console.log('✅ Service Worker enregistré:', registration.scope);
-                            
-                            // Vérifier les mises à jour
-                            registration.addEventListener('updatefound', () => {
-                                const newWorker = registration.installing;
-                                console.log('🔄 Mise à jour du Service Worker détectée');
-                                
-                                newWorker.addEventListener('statechange', () => {
-                                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                        console.log('📱 Nouvelle version disponible!');
-                                        if (confirm('✨ Nouvelle version de GameHub disponible! Voulez-vous actualiser?')) {
-                                            window.location.reload();
-                                        }
-                                    }
-                                });
-                            });
                         })
                         .catch(error => {
                             console.log('❌ Erreur Service Worker:', error);
@@ -616,55 +762,42 @@
             }
         }
 
-        // Démarrer les animations au chargement de la page
+        // Initialisation
         document.addEventListener('DOMContentLoaded', function() {
             createParticles();
             registerServiceWorker();
-            setupPWAInstall();
             
-            // Démarrer l'animation de chargement après un court délai
-            setTimeout(() => {
-                simulateLoading();
-            }, 300);
+            // Démarrer le chargement
+            simulateLoading();
             
-            // Ajouter une secousse subtile au logo
-            const logoCenter = document.querySelector('.logo-center');
-            setInterval(() => {
-                logoCenter.style.transform = 'translate(-50%, -50%) scale(1.05)';
-                setTimeout(() => {
-                    logoCenter.style.transform = 'translate(-50%, -50%) scale(1)';
-                }, 200);
-            }, 2000);
-        });
-
-        // Redirection manuelle si l'utilisateur clique (après au moins 1 seconde)
-        document.addEventListener('click', function() {
-            const elapsedTime = Date.now() - startTime;
-            
-            if (elapsedTime >= 1000) {
-                const loadingContainer = document.getElementById('loadingContainer');
-                loadingContainer.classList.add('fade-out');
+            // Clic sur le bouton continuer
+            document.getElementById('continueButton').addEventListener('click', function() {
+                if (!loadingComplete) return;
                 
+                // Animation de sortie
+                const loadingContainer = document.getElementById('loadingContainer');
+                loadingContainer.style.opacity = '0';
+                loadingContainer.style.transform = 'translateY(-20px)';
+                
+                // Redirection après animation
                 setTimeout(() => {
                     window.location.href = 'login.html';
-                }, 300);
-            }
-        });
-
-        // Redirection par touche espace ou entrée (après au moins 1 seconde)
-        document.addEventListener('keydown', function(e) {
-            if (e.code === 'Space' || e.code === 'Enter') {
-                const elapsedTime = Date.now() - startTime;
-                
-                if (elapsedTime >= 1000) {
-                    const loadingContainer = document.getElementById('loadingContainer');
-                    loadingContainer.classList.add('fade-out');
-                    
-                    setTimeout(() => {
-                        window.location.href = 'login.html';
-                    }, 300);
+                }, 500);
+            });
+            
+            // Clic sur le logo pour fun
+            document.getElementById('logoCenter').addEventListener('click', function() {
+                if (loadingComplete) {
+                    createCelebrationParticle();
                 }
-            }
+            });
+            
+            // Touche Entrée pour continuer
+            document.addEventListener('keydown', function(e) {
+                if (e.code === 'Enter' && loadingComplete) {
+                    document.getElementById('continueButton').click();
+                }
+            });
         });
     </script>
 </body>
