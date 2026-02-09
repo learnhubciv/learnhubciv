@@ -543,20 +543,22 @@
     </div>
 
     <script>
-        // Variables globales
+        // Variables globales - DÉBUT ABSOLU
         let deferredPrompt = null;
         let loadingComplete = false;
         let progressInterval;
 
-        // 1️⃣ Écouter beforeinstallprompt IMMÉDIATEMENT (CORRECTION CRITIQUE)
+        // 1️⃣ CAPTURE IMMÉDIATE du beforeinstallprompt
         window.addEventListener('beforeinstallprompt', (e) => {
-            console.log('✅ Événement beforeinstallprompt déclenché !');
+            console.log('✅ Événement beforeinstallprompt CAPTURÉ IMMÉDIATEMENT');
             e.preventDefault();
             deferredPrompt = e;
             
-            // Mettre à jour l'interface si le chargement est déjà terminé
-            if (loadingComplete) {
-                updateInstallButtonUI();
+            // Optionnel : montre le bouton tout de suite
+            const installButton = document.getElementById('installButton');
+            if (installButton) {
+                installButton.style.display = 'flex';
+                installButton.innerHTML = '<i class="fas fa-download"></i> Installer l\'App (Gratuit)';
             }
         });
 
@@ -586,8 +588,6 @@
         // Simuler un chargement progressif
         function simulateLoading() {
             const progressBar = document.getElementById('progressBar');
-            const loadingText = document.getElementById('loadingText');
-            const loadingSubtext = document.getElementById('loadingSubtext');
             const actionsContainer = document.getElementById('actionsContainer');
             
             const texts = [
@@ -693,51 +693,49 @@
             } else {
                 // Sinon, montrer les instructions manuelles
                 installButton.innerHTML = '<i class="fas fa-mobile-alt"></i> Ajouter à l\'écran d\'accueil';
+                installButton.style.display = 'flex';
                 installInstructions.classList.add('show');
             }
         }
 
-        // Gérer le clic sur le bouton d'installation
-        function handleInstallClick() {
+        // Gérer le clic sur le bouton d'installation - VERSION SIMPLIFIÉE
+        async function handleInstallClick() {
             console.log('🖱️ Clic sur le bouton d\'installation');
             
             if (deferredPrompt) {
                 console.log('🚀 Lancement de l\'installation native...');
                 
-                deferredPrompt.prompt();
-                
-                deferredPrompt.userChoice.then((choiceResult) => {
+                try {
+                    deferredPrompt.prompt();
+                    const choiceResult = await deferredPrompt.userChoice;
+                    
                     if (choiceResult.outcome === 'accepted') {
                         console.log('✅ Utilisateur a accepté l\'installation');
                         
-                        // Mettre à jour l'interface
                         const installButton = document.getElementById('installButton');
                         const installInstructions = document.getElementById('installInstructions');
                         
                         installButton.innerHTML = '<i class="fas fa-check"></i> Installation réussie !';
-                        installButton.style.background = 'var(--success)';
-                        installButton.style.borderColor = 'var(--success)';
+                        installButton.style.background = '#28A745';
+                        installButton.style.borderColor = '#28A745';
                         installButton.disabled = true;
                         installInstructions.style.display = 'none';
                     } else {
                         console.log('❌ Utilisateur a refusé l\'installation');
-                        
-                        // Animation de feedback
                         const installButton = document.getElementById('installButton');
                         installButton.classList.add('shake');
                         setTimeout(() => installButton.classList.remove('shake'), 500);
                     }
                     
                     deferredPrompt = null;
-                });
+                } catch (error) {
+                    console.error('Erreur lors de l\'installation:', error);
+                }
             } else {
-                console.log('ℹ️ Installation native non disponible, affichage des instructions');
-                
-                // Montrer les instructions manuelles
+                console.log('ℹ️ Installation native non disponible');
                 const installInstructions = document.getElementById('installInstructions');
                 installInstructions.classList.add('show');
                 
-                // Animation de feedback
                 const installButton = document.getElementById('installButton');
                 installButton.classList.add('shake');
                 setTimeout(() => installButton.classList.remove('shake'), 500);
@@ -747,11 +745,8 @@
         // Animation de célébration
         function celebrateCompletion() {
             const logoCenter = document.getElementById('logoCenter');
-            
-            // Animation du logo
             logoCenter.style.animation = "pulse 1s ease 3";
             
-            // Ajouter quelques particules supplémentaires
             for (let i = 0; i < 10; i++) {
                 setTimeout(() => {
                     createCelebrationParticle();
@@ -776,7 +771,6 @@
             
             particlesContainer.appendChild(particle);
             
-            // Supprimer après animation
             setTimeout(() => {
                 if (particle.parentNode) {
                     particle.parentNode.removeChild(particle);
@@ -784,14 +778,13 @@
             }, 3000);
         }
 
-        // Enregistrement du Service Worker (chemin relatif)
+        // Enregistrement du Service Worker
         function registerServiceWorker() {
             if ('serviceWorker' in navigator) {
                 window.addEventListener('load', () => {
-                    // Utilise un chemin relatif pour plus de sécurité
                     navigator.serviceWorker.register('./service-worker.js')
                         .then(registration => {
-                            console.log('✅ Service Worker enregistré avec succès:', registration.scope);
+                            console.log('✅ Service Worker enregistré:', registration.scope);
                         })
                         .catch(error => {
                             console.log('❌ Erreur Service Worker:', error);
@@ -804,7 +797,6 @@
         document.addEventListener('DOMContentLoaded', function() {
             console.log('🚀 Initialisation de GameHub...');
             console.log('📱 Mode standalone?', window.matchMedia('(display-mode: standalone)').matches);
-            console.log('🛠️ Service Worker supporté?', 'serviceWorker' in navigator);
             
             createParticles();
             registerServiceWorker();
@@ -816,12 +808,10 @@
             document.getElementById('continueButton').addEventListener('click', function() {
                 if (!loadingComplete) return;
                 
-                // Animation de sortie
                 const loadingContainer = document.getElementById('loadingContainer');
                 loadingContainer.style.opacity = '0';
                 loadingContainer.style.transform = 'translateY(-20px)';
                 
-                // Redirection après animation
                 setTimeout(() => {
                     window.location.href = 'login.html';
                 }, 500);
@@ -830,7 +820,7 @@
             // Clic sur le bouton d'installation
             document.getElementById('installButton').addEventListener('click', handleInstallClick);
             
-            // Clic sur le logo pour fun
+            // Clic sur le logo
             document.getElementById('logoCenter').addEventListener('click', function() {
                 if (loadingComplete) {
                     createCelebrationParticle();
@@ -844,14 +834,14 @@
                 }
             });
             
-            // Log supplémentaire pour débogage
+            // Log après 2 secondes pour vérification
             setTimeout(() => {
                 console.log('🔍 État PWA:', {
                     deferredPrompt: !!deferredPrompt,
                     loadingComplete: loadingComplete,
                     isStandalone: window.matchMedia('(display-mode: standalone)').matches
                 });
-            }, 1000);
+            }, 2000);
         });
     </script>
 </body>
