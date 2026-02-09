@@ -6,14 +6,13 @@
   "display": "standalone",
   "background_color": "#1A1A2E",
   "theme_color": "#8A2BE2",
-  "orientation": "portrait-primary",
+  "orientation": "portrait",
   "scope": "/",
   "icons": [
     {
       "src": "icons/icon-72x72.png",
       "sizes": "72x72",
-      "type": "image/png",
-      "purpose": "maskable any"
+      "type": "image/png"
     },
     {
       "src": "icons/icon-96x96.png",
@@ -48,8 +47,7 @@
     {
       "src": "icons/icon-512x512.png",
       "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/png"
     }
   ],
   "shortcuts": [
@@ -58,17 +56,26 @@
       "short_name": "Accueil",
       "description": "Accéder à l'accueil principal",
       "url": "/accueil.html",
-      "icons": [{ "src": "icons/home-icon.png", "sizes": "96x96" }]
+      "icons": [
+        {
+          "src": "icons/home-icon.png",
+          "sizes": "96x96"
+        }
+      ]
     },
     {
       "name": "Jeux Rapides",
       "short_name": "Jeux",
       "description": "Accéder directement aux jeux",
-      "url": "/jeux.html",  // CORRECTION ICI : games.html → jeux.html
-      "icons": [{ "src": "icons/games-icon.png", "sizes": "96x96" }]
+      "url": "/jeux.html",
+      "icons": [
+        {
+          "src": "icons/games-icon.png",
+          "sizes": "96x96"
+        }
+      ]
     }
   ],
   "categories": ["entertainment", "games", "finance"],
-  "display_override": ["window-controls-overlay"],
   "prefer_related_applications": false
 }

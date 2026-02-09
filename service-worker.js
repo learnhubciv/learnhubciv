@@ -1,16 +1,16 @@
 const CACHE_NAME = 'gamehub-v2.1.0';
 const DYNAMIC_CACHE_NAME = 'gamehub-dynamic-v1';
 
-// Fichiers à mettre en cache immédiatement (TOUTES LES PAGES CORRECTES)
+// Fichiers à mettre en cache immédiatement
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/login.html',
-  '/accueil.html',
-  '/jeux.html',  // CORRECTION ICI : games.html → jeux.html
-  '/manifest.json',
-  '/icons/icon-192x192.png',
-  '/icons/icon-512x512.png',
+  './',
+  './index.html',
+  './login.html',
+  './accueil.html',
+  './jeux.html',
+  './manifest.json',
+  './icons/icon-192x192.png',
+  './icons/icon-512x512.png',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-solid-900.woff2'
 ];
@@ -55,7 +55,7 @@ self.addEventListener('activate', (event) => {
 
 // Stratégie: Cache First, Network Fallback
 self.addEventListener('fetch', (event) => {
-  // Ignorer les requêtes non-GET et certaines extensions
+  // Ignorer les requêtes non-GET
   if (event.request.method !== 'GET') return;
   
   const url = new URL(event.request.url);
@@ -91,8 +91,7 @@ async function cacheFirstStrategy(request) {
   } catch (error) {
     // Fallback pour les pages
     if (request.headers.get('accept').includes('text/html')) {
-      // Essayer de renvoyer accueil.html si disponible
-      const fallback = await caches.match('/accueil.html') || await caches.match('/index.html');
+      const fallback = await caches.match('./index.html');
       if (fallback) return fallback;
     }
     
@@ -120,10 +119,3 @@ async function networkFirstStrategy(request) {
     });
   }
 }
-
-// Gestion des messages (pour mise à jour)
-self.addEventListener('message', (event) => {
-  if (event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
-});
