@@ -351,6 +351,17 @@
             line-height: 1.4;
         }
 
+        /* Animation pour le bouton install */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); }
+            20%, 40%, 60%, 80% { transform: translateX(2px); }
+        }
+
+        .shake {
+            animation: shake 0.5s ease;
+        }
+
         /* Animations */
         @keyframes rotate {
             0% {
@@ -687,15 +698,14 @@
             }, 3000);
         }
 
-        // Gestion de l'installation PWA
+        // Gestion de l'installation PWA - CORRIGÉE
         function setupPWAInstall() {
             const installButton = document.getElementById('installButton');
             const installInstructions = document.getElementById('installInstructions');
-            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
             const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
                                  window.navigator.standalone;
             
-            // Si déjà installé ou sur iOS, afficher les instructions
+            // Si déjà installé, ne pas afficher le bouton d'installation
             if (isStandalone) {
                 installButton.style.display = 'none';
                 installInstructions.classList.add('show');
@@ -703,48 +713,70 @@
                 return;
             }
             
-            // Pour iOS, toujours montrer les instructions
-            if (isIOS) {
-                installButton.innerHTML = '<i class="fas fa-mobile-alt"></i> Installer sur iOS';
-                installInstructions.classList.add('show');
-            }
+            // Vérifier si on peut installer
+            let canInstall = false;
             
             // Événement d'installation PWA (pour Chrome/Android)
             window.addEventListener('beforeinstallprompt', (e) => {
                 e.preventDefault();
                 deferredPrompt = e;
+                canInstall = true;
+                console.log('✅ Installation PWA disponible');
                 
-                // Montrer le bouton d'installation
-                installButton.style.display = 'flex';
-                
-                // Gestion du clic
-                installButton.addEventListener('click', async () => {
-                    if (deferredPrompt) {
-                        deferredPrompt.prompt();
-                        const { outcome } = await deferredPrompt.userChoice;
-                        
-                        if (outcome === 'accepted') {
-                            console.log('✅ Utilisateur a installé la PWA');
-                            installButton.innerHTML = '<i class="fas fa-check"></i> Installation réussie !';
-                            installButton.style.background = 'var(--success)';
-                            installButton.style.borderColor = 'var(--success)';
-                            installButton.disabled = true;
-                        }
-                        
-                        deferredPrompt = null;
-                    } else {
-                        // Si pas d'installation native, montrer les instructions
-                        installInstructions.classList.add('show');
-                    }
-                });
+                // Mettre à jour le texte du bouton
+                installButton.innerHTML = '<i class="fas fa-download"></i> Installer l\'App';
             });
             
-            // Si pas d'événement beforeinstallprompt après 1 seconde, montrer les instructions
+            // Gestion du clic sur le bouton d'installation
+            installButton.addEventListener('click', async () => {
+                console.log('Clic sur le bouton d\'installation');
+                
+                if (deferredPrompt && canInstall) {
+                    // Installation native disponible
+                    console.log('Lancement de l\'installation...');
+                    
+                    deferredPrompt.prompt();
+                    const { outcome } = await deferredPrompt.userChoice;
+                    
+                    if (outcome === 'accepted') {
+                        console.log('✅ Utilisateur a installé la PWA');
+                        installButton.innerHTML = '<i class="fas fa-check"></i> Installation réussie !';
+                        installButton.style.background = 'var(--success)';
+                        installButton.style.borderColor = 'var(--success)';
+                        installButton.disabled = true;
+                        
+                        // Masquer les instructions
+                        installInstructions.style.display = 'none';
+                    } else {
+                        console.log('❌ Utilisateur a refusé l\'installation');
+                        installButton.classList.add('shake');
+                        setTimeout(() => installButton.classList.remove('shake'), 500);
+                        
+                        // Montrer les instructions
+                        installInstructions.classList.add('show');
+                    }
+                    
+                    deferredPrompt = null;
+                    canInstall = false;
+                } else {
+                    // Pas d'installation native, montrer les instructions
+                    console.log('Installation native non disponible, affichage des instructions');
+                    installInstructions.classList.add('show');
+                    
+                    // Animation de feedback
+                    installButton.classList.add('shake');
+                    setTimeout(() => installButton.classList.remove('shake'), 500);
+                }
+            });
+            
+            // Si pas d'installation native après 2 secondes, adapter le bouton
             setTimeout(() => {
-                if (!deferredPrompt) {
+                if (!canInstall) {
+                    console.log('Installation native non détectée');
+                    installButton.innerHTML = '<i class="fas fa-mobile-alt"></i> Ajouter à l\'écran d\'accueil';
                     installInstructions.classList.add('show');
                 }
-            }, 1000);
+            }, 2000);
         }
 
         // Enregistrement du Service Worker
@@ -798,6 +830,14 @@
                     document.getElementById('continueButton').click();
                 }
             });
+            
+            // Forcer l'affichage du bouton d'installation pour le test
+            setTimeout(() => {
+                const installButton = document.getElementById('installButton');
+                if (installButton.style.display !== 'none') {
+                    console.log('Bouton d\'installation visible et fonctionnel');
+                }
+            }, 1000);
         });
     </script>
 </body>
