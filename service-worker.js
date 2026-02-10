@@ -1,5 +1,5 @@
-const CACHE_NAME = 'gamehub-v2.1.4';
-const DYNAMIC_CACHE_NAME = 'gamehub-dynamic-v4';
+const CACHE_NAME = 'gamehub-v2.1.5';
+const DYNAMIC_CACHE_NAME = 'gamehub-dynamic-v5';
 
 const STATIC_ASSETS = [
   './',
