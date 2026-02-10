@@ -4,7 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chargement - GameHub</title>
+    
+    <!-- PWA Configuration -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#8A2BE2">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="GameHub">
+    <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="icons/icon-16x16.png">
+    <meta name="mobile-web-app-capable" content="yes">
+    
+    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <style>
         * {
             margin: 0;
@@ -29,16 +43,24 @@
             background: linear-gradient(135deg, #1A1A2E 0%, #16213E 50%, #0F3460 100%);
             color: var(--light);
             min-height: 100vh;
-            overflow: hidden;
+            overflow-x: hidden;
             display: flex;
             align-items: center;
             justify-content: center;
+            -webkit-tap-highlight-color: transparent;
+            padding: 20px;
         }
 
         .loading-container {
             text-align: center;
-            max-width: 400px;
-            padding: 20px;
+            max-width: 450px;
+            padding: 30px;
+            background: rgba(26, 26, 46, 0.8);
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(138, 43, 226, 0.3);
+            position: relative;
+            z-index: 10;
         }
 
         /* Logo animation */
@@ -91,7 +113,13 @@
             color: white;
             box-shadow: 0 0 30px rgba(138, 43, 226, 0.5);
             z-index: 2;
-            transition: transform 0.3s ease;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .logo-center:hover {
+            transform: translate(-50%, -50%) scale(1.1);
+            box-shadow: 0 0 40px rgba(138, 43, 226, 0.7);
         }
 
         /* Pulsating dots */
@@ -122,8 +150,8 @@
 
         /* Text animation */
         .loading-text {
-            font-size: 1.4rem;
-            font-weight: 600;
+            font-size: 1.5rem;
+            font-weight: 700;
             margin-bottom: 10px;
             background: linear-gradient(to right, var(--primary), var(--accent), var(--secondary));
             -webkit-background-clip: text;
@@ -134,16 +162,17 @@
         }
 
         .loading-subtext {
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.95rem;
             margin-top: 5px;
             transition: opacity 0.3s ease;
+            min-height: 20px;
         }
 
         /* Progress bar */
         .progress-container {
             width: 100%;
-            height: 4px;
+            height: 6px;
             background: rgba(255, 255, 255, 0.1);
             border-radius: 10px;
             margin: 25px 0;
@@ -155,14 +184,14 @@
             background: linear-gradient(to right, var(--primary), var(--accent));
             border-radius: 10px;
             width: 0%;
-            transition: width 0.3s ease;
+            transition: width 0.5s ease;
         }
 
         /* Stats preview */
         .stats-preview {
             display: flex;
             justify-content: center;
-            gap: 20px;
+            gap: 25px;
             margin-top: 30px;
             opacity: 0;
             animation: fadeIn 0.5s ease 1s forwards;
@@ -170,18 +199,22 @@
 
         .stat-preview {
             text-align: center;
+            padding: 10px 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            min-width: 80px;
         }
 
         .stat-preview-value {
-            font-size: 1.2rem;
-            font-weight: 700;
+            font-size: 1.3rem;
+            font-weight: 800;
             color: var(--accent);
-            margin-bottom: 3px;
+            margin-bottom: 5px;
         }
 
         .stat-preview-label {
-            font-size: 0.7rem;
-            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.7);
         }
 
         /* Particles background */
@@ -192,7 +225,7 @@
             width: 100%;
             height: 100%;
             pointer-events: none;
-            z-index: -1;
+            z-index: 1;
         }
 
         .particle {
@@ -209,6 +242,124 @@
 
         .particle:nth-child(even) {
             background: var(--secondary);
+        }
+
+        /* Action Buttons Container */
+        .actions-container {
+            margin-top: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.5s ease;
+        }
+
+        .actions-container.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Continue Button */
+        .continue-button {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 16px 40px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 5px 20px rgba(138, 43, 226, 0.4);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin: 10px auto;
+            min-width: 250px;
+        }
+
+        .continue-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(138, 43, 226, 0.6);
+        }
+
+        .continue-button i {
+            font-size: 18px;
+        }
+
+        /* Install Button */
+        .install-button {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--accent);
+            border: 2px solid var(--accent);
+            border-radius: 50px;
+            padding: 14px 30px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin: 5px auto;
+            min-width: 250px;
+            backdrop-filter: blur(10px);
+        }
+
+        .install-button:hover {
+            background: var(--accent);
+            color: var(--dark);
+            transform: translateY(-3px);
+        }
+
+        .install-button i {
+            font-size: 16px;
+        }
+
+        /* Install Instructions */
+        .install-instructions {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 15px;
+            padding: 15px;
+            margin-top: 20px;
+            border-left: 4px solid var(--accent);
+            text-align: left;
+            display: none;
+        }
+
+        .install-instructions.show {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .install-instructions h4 {
+            color: var(--accent);
+            margin-bottom: 10px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .install-instructions p {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 12px;
+            margin: 5px 0;
+            line-height: 1.4;
+        }
+
+        /* Animation pour le bouton install */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); }
+            20%, 40%, 60%, 80% { transform: translateX(2px); }
+        }
+
+        .shake {
+            animation: shake 0.5s ease;
         }
 
         /* Animations */
@@ -267,7 +418,8 @@
         /* Responsive */
         @media (max-width: 480px) {
             .loading-container {
-                max-width: 90%;
+                max-width: 95%;
+                padding: 20px;
             }
 
             .logo-wrapper {
@@ -282,11 +434,21 @@
             }
 
             .loading-text {
-                font-size: 1.2rem;
+                font-size: 1.3rem;
             }
 
             .stats-preview {
                 gap: 15px;
+            }
+
+            .stat-preview {
+                padding: 8px 10px;
+                min-width: 70px;
+            }
+
+            .continue-button, .install-button {
+                min-width: 200px;
+                padding: 14px 25px;
             }
         }
 
@@ -301,23 +463,12 @@
             color: rgba(255, 255, 255, 0.5);
             animation: fadeIn 0.5s ease 1.5s forwards;
             opacity: 0;
+            z-index: 10;
         }
 
         .gamehub-brand span {
             color: var(--accent);
             font-weight: 600;
-        }
-        
-        /* Animation de fin de chargement */
-        @keyframes fadeOut {
-            to {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
-        }
-        
-        .fade-out {
-            animation: fadeOut 0.5s ease forwards;
         }
     </style>
 </head>
@@ -331,7 +482,7 @@
             <div class="logo-circle"></div>
             <div class="logo-circle"></div>
             <div class="logo-circle"></div>
-            <div class="logo-center">
+            <div class="logo-center" id="logoCenter">
                 <i class="fas fa-dice"></i>
             </div>
         </div>
@@ -367,6 +518,23 @@
                 <div class="stat-preview-label">Gains</div>
             </div>
         </div>
+
+        <!-- Action Buttons (hidden initially) -->
+        <div class="actions-container" id="actionsContainer">
+            <button class="continue-button" id="continueButton">
+                <i class="fas fa-play"></i> Accéder à GameHub
+            </button>
+            
+            <button class="install-button" id="installButton">
+                <i class="fas fa-download"></i> Installer l'Application
+            </button>
+            
+            <div class="install-instructions" id="installInstructions">
+                <h4><i class="fas fa-info-circle"></i> Comment installer :</h4>
+                <p><strong>Android/Chrome :</strong> Menu (⋮) → "Installer l'application"</p>
+                <p><strong>iOS/Safari :</strong> Partager (⎙) → "Sur l'écran d'accueil"</p>
+            </div>
+        </div>
     </div>
 
     <!-- Branding -->
@@ -375,24 +543,39 @@
     </div>
 
     <script>
+        // Variables globales - DÉBUT ABSOLU
+        let deferredPrompt = null;
+        let loadingComplete = false;
+        let progressInterval;
+
+        // 1️⃣ CAPTURE IMMÉDIATE du beforeinstallprompt
+        window.addEventListener('beforeinstallprompt', (e) => {
+            console.log('✅ Événement beforeinstallprompt CAPTURÉ IMMÉDIATEMENT');
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            // Optionnel : montre le bouton tout de suite
+            const installButton = document.getElementById('installButton');
+            if (installButton) {
+                installButton.style.display = 'flex';
+                installButton.innerHTML = '<i class="fas fa-download"></i> Installer l\'App (Gratuit)';
+            }
+        });
+
         // Créer des particules animées
         function createParticles() {
             const particlesContainer = document.getElementById('particles');
-            const particleCount = 15;
+            const particleCount = 20;
 
             for (let i = 0; i < particleCount; i++) {
                 const particle = document.createElement('div');
                 particle.className = 'particle';
                 
-                // Taille aléatoire
-                const size = Math.random() * 10 + 5;
+                const size = Math.random() * 15 + 5;
                 particle.style.width = `${size}px`;
                 particle.style.height = `${size}px`;
-                
-                // Position aléatoire
                 particle.style.left = `${Math.random() * 100}%`;
                 
-                // Animation aléatoire
                 const duration = Math.random() * 20 + 10;
                 const delay = Math.random() * 5;
                 particle.style.animationDuration = `${duration}s`;
@@ -402,117 +585,263 @@
             }
         }
 
-        // Simuler un chargement progressif sur 3 secondes
+        // Simuler un chargement progressif
         function simulateLoading() {
             const progressBar = document.getElementById('progressBar');
-            const loadingText = document.getElementById('loadingText');
-            const loadingSubtext = document.getElementById('loadingSubtext');
-            const loadingContainer = document.getElementById('loadingContainer');
+            const actionsContainer = document.getElementById('actionsContainer');
             
             const texts = [
                 {main: "Chargement GameHub", sub: "Préparation de votre expérience gaming ultime"},
                 {main: "Initialisation des bots", sub: "Optimisation en cours..."},
                 {main: "Préparation des jeux", sub: "Chargement des ressources..."},
                 {main: "Optimisation des gains", sub: "Configuration des paramètres..."},
-                {main: "Presque terminé...", sub: "Redirection imminente..."}
+                {main: "Chargement terminé !", sub: "Prêt à générer des gains !"}
             ];
 
             let progress = 0;
-            const totalTime = 3000; // 3 secondes en millisecondes
-            const intervalTime = 50; // Mettre à jour toutes les 50ms pour fluidité
-            const steps = totalTime / intervalTime; // Nombre total d'étapes
-            const increment = 100 / steps; // Pourcentage à ajouter à chaque étape
+            const totalTime = 4000;
+            const intervalTime = 30;
+            const steps = totalTime / intervalTime;
+            const increment = 100 / steps;
             
             let textIndex = 0;
             
-            const interval = setInterval(() => {
+            progressInterval = setInterval(() => {
                 progress += increment;
-                progressBar.style.width = `${progress}%`;
+                progressBar.style.width = `${Math.min(progress, 100)}%`;
                 
                 // Changer le texte à certains pourcentages
                 if (progress >= 20 && progress < 40 && textIndex < 1) {
                     textIndex = 1;
-                    loadingText.textContent = texts[1].main;
-                    loadingSubtext.textContent = texts[1].sub;
+                    updateLoadingText(texts[1]);
                 } else if (progress >= 40 && progress < 60 && textIndex < 2) {
                     textIndex = 2;
-                    loadingText.textContent = texts[2].main;
-                    loadingSubtext.textContent = texts[2].sub;
+                    updateLoadingText(texts[2]);
                 } else if (progress >= 60 && progress < 80 && textIndex < 3) {
                     textIndex = 3;
-                    loadingText.textContent = texts[3].main;
-                    loadingSubtext.textContent = texts[3].sub;
-                } else if (progress >= 80 && progress < 100 && textIndex < 4) {
+                    updateLoadingText(texts[3]);
+                } else if (progress >= 100 && textIndex < 4) {
                     textIndex = 4;
-                    loadingText.textContent = texts[4].main;
-                    loadingSubtext.textContent = texts[4].sub;
-                }
-                
-                if (progress >= 100) {
-                    clearInterval(interval);
-                    progressBar.style.width = '100%';
-                    
-                    // Ajouter un effet de fondu à la sortie
-                    loadingContainer.classList.add('fade-out');
-                    
-                    // Redirection vers la page de connexion après un court délai
-                    setTimeout(() => {
-                        window.location.href = 'login.html';
-                    }, 500);
+                    completeLoading();
                 }
             }, intervalTime);
         }
 
-        // Démarrer les animations au chargement de la page
-        document.addEventListener('DOMContentLoaded', function() {
-            createParticles();
+        // Mettre à jour le texte de chargement
+        function updateLoadingText(text) {
+            const loadingText = document.getElementById('loadingText');
+            const loadingSubtext = document.getElementById('loadingSubtext');
             
-            // Démarrer l'animation de chargement après un court délai
+            loadingText.style.opacity = 0;
+            loadingSubtext.style.opacity = 0;
+            
             setTimeout(() => {
-                simulateLoading();
+                loadingText.textContent = text.main;
+                loadingSubtext.textContent = text.sub;
+                loadingText.style.opacity = 1;
+                loadingSubtext.style.opacity = 1;
             }, 300);
-            
-            // Ajouter une secousse subtile au logo
-            const logoCenter = document.querySelector('.logo-center');
-            setInterval(() => {
-                logoCenter.style.transform = 'translate(-50%, -50%) scale(1.05)';
-                setTimeout(() => {
-                    logoCenter.style.transform = 'translate(-50%, -50%) scale(1)';
-                }, 200);
-            }, 2000);
-        });
+        }
 
-        // Redirection manuelle si l'utilisateur clique (après au moins 1 seconde)
-        let startTime = Date.now();
-        
-        document.addEventListener('click', function() {
-            // Vérifier si au moins 1 seconde s'est écoulée
-            const elapsedTime = Date.now() - startTime;
+        // Terminer le chargement
+        function completeLoading() {
+            clearInterval(progressInterval);
+            loadingComplete = true;
             
-            if (elapsedTime >= 1000) {
+            const progressBar = document.getElementById('progressBar');
+            const actionsContainer = document.getElementById('actionsContainer');
+            const loadingText = document.getElementById('loadingText');
+            const loadingSubtext = document.getElementById('loadingSubtext');
+            
+            // Mettre à jour le texte final
+            loadingText.textContent = "Prêt à jouer !";
+            loadingSubtext.textContent = "GameHub est prêt à vous faire gagner";
+            
+            // Animation de la barre de progression terminée
+            progressBar.style.background = "linear-gradient(to right, #28A745, #00FF88)";
+            
+            // Afficher les boutons d'action
+            setTimeout(() => {
+                actionsContainer.classList.add('show');
+                updateInstallButtonUI(); // Mettre à jour l'interface d'installation
+            }, 500);
+            
+            // Petite animation de célébration
+            celebrateCompletion();
+        }
+
+        // Mettre à jour l'interface du bouton d'installation
+        function updateInstallButtonUI() {
+            const installButton = document.getElementById('installButton');
+            const installInstructions = document.getElementById('installInstructions');
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                                 window.navigator.standalone;
+            
+            // Si déjà installé
+            if (isStandalone) {
+                installButton.style.display = 'none';
+                installInstructions.classList.add('show');
+                installInstructions.innerHTML = '<h4><i class="fas fa-check-circle"></i> Application déjà installée</h4><p>GameHub est installé sur votre appareil !</p>';
+                return;
+            }
+            
+            // Si l'installation native est disponible
+            if (deferredPrompt) {
+                installButton.innerHTML = '<i class="fas fa-download"></i> Installer l\'App (Gratuit)';
+                installButton.style.display = 'flex';
+                installInstructions.classList.remove('show');
+            } else {
+                // Sinon, montrer les instructions manuelles
+                installButton.innerHTML = '<i class="fas fa-mobile-alt"></i> Ajouter à l\'écran d\'accueil';
+                installButton.style.display = 'flex';
+                installInstructions.classList.add('show');
+            }
+        }
+
+        // Gérer le clic sur le bouton d'installation - VERSION SIMPLIFIÉE
+        async function handleInstallClick() {
+            console.log('🖱️ Clic sur le bouton d\'installation');
+            
+            if (deferredPrompt) {
+                console.log('🚀 Lancement de l\'installation native...');
+                
+                try {
+                    deferredPrompt.prompt();
+                    const choiceResult = await deferredPrompt.userChoice;
+                    
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('✅ Utilisateur a accepté l\'installation');
+                        
+                        const installButton = document.getElementById('installButton');
+                        const installInstructions = document.getElementById('installInstructions');
+                        
+                        installButton.innerHTML = '<i class="fas fa-check"></i> Installation réussie !';
+                        installButton.style.background = '#28A745';
+                        installButton.style.borderColor = '#28A745';
+                        installButton.disabled = true;
+                        installInstructions.style.display = 'none';
+                    } else {
+                        console.log('❌ Utilisateur a refusé l\'installation');
+                        const installButton = document.getElementById('installButton');
+                        installButton.classList.add('shake');
+                        setTimeout(() => installButton.classList.remove('shake'), 500);
+                    }
+                    
+                    deferredPrompt = null;
+                } catch (error) {
+                    console.error('Erreur lors de l\'installation:', error);
+                }
+            } else {
+                console.log('ℹ️ Installation native non disponible');
+                const installInstructions = document.getElementById('installInstructions');
+                installInstructions.classList.add('show');
+                
+                const installButton = document.getElementById('installButton');
+                installButton.classList.add('shake');
+                setTimeout(() => installButton.classList.remove('shake'), 500);
+            }
+        }
+
+        // Animation de célébration
+        function celebrateCompletion() {
+            const logoCenter = document.getElementById('logoCenter');
+            logoCenter.style.animation = "pulse 1s ease 3";
+            
+            for (let i = 0; i < 10; i++) {
+                setTimeout(() => {
+                    createCelebrationParticle();
+                }, i * 100);
+            }
+        }
+
+        // Créer une particule de célébration
+        function createCelebrationParticle() {
+            const particlesContainer = document.getElementById('particles');
+            const logoCenter = document.getElementById('logoCenter');
+            const rect = logoCenter.getBoundingClientRect();
+            
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            particle.style.width = '8px';
+            particle.style.height = '8px';
+            particle.style.left = `${rect.left + rect.width/2}px`;
+            particle.style.top = `${rect.top + rect.height/2}px`;
+            particle.style.background = Math.random() > 0.5 ? 'var(--primary)' : 'var(--accent)';
+            particle.style.animation = 'float 3s ease-out forwards';
+            
+            particlesContainer.appendChild(particle);
+            
+            setTimeout(() => {
+                if (particle.parentNode) {
+                    particle.parentNode.removeChild(particle);
+                }
+            }, 3000);
+        }
+
+        // Enregistrement du Service Worker
+        function registerServiceWorker() {
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('./service-worker.js')
+                        .then(registration => {
+                            console.log('✅ Service Worker enregistré:', registration.scope);
+                        })
+                        .catch(error => {
+                            console.log('❌ Erreur Service Worker:', error);
+                        });
+                });
+            }
+        }
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Initialisation de GameHub...');
+            console.log('📱 Mode standalone?', window.matchMedia('(display-mode: standalone)').matches);
+            
+            createParticles();
+            registerServiceWorker();
+            
+            // Démarrer le chargement
+            simulateLoading();
+            
+            // Clic sur le bouton continuer
+            document.getElementById('continueButton').addEventListener('click', function() {
+                if (!loadingComplete) return;
+                
                 const loadingContainer = document.getElementById('loadingContainer');
-                loadingContainer.classList.add('fade-out');
+                loadingContainer.style.opacity = '0';
+                loadingContainer.style.transform = 'translateY(-20px)';
                 
                 setTimeout(() => {
                     window.location.href = 'login.html';
-                }, 300);
-            }
-        });
-
-        // Redirection par touche espace ou entrée (après au moins 1 seconde)
-        document.addEventListener('keydown', function(e) {
-            if (e.code === 'Space' || e.code === 'Enter') {
-                const elapsedTime = Date.now() - startTime;
-                
-                if (elapsedTime >= 1000) {
-                    const loadingContainer = document.getElementById('loadingContainer');
-                    loadingContainer.classList.add('fade-out');
-                    
-                    setTimeout(() => {
-                        window.location.href = 'login.html';
-                    }, 300);
+                }, 500);
+            });
+            
+            // Clic sur le bouton d'installation
+            document.getElementById('installButton').addEventListener('click', handleInstallClick);
+            
+            // Clic sur le logo
+            document.getElementById('logoCenter').addEventListener('click', function() {
+                if (loadingComplete) {
+                    createCelebrationParticle();
                 }
-            }
+            });
+            
+            // Touche Entrée pour continuer
+            document.addEventListener('keydown', function(e) {
+                if (e.code === 'Enter' && loadingComplete) {
+                    document.getElementById('continueButton').click();
+                }
+            });
+            
+            // Log après 2 secondes pour vérification
+            setTimeout(() => {
+                console.log('🔍 État PWA:', {
+                    deferredPrompt: !!deferredPrompt,
+                    loadingComplete: loadingComplete,
+                    isStandalone: window.matchMedia('(display-mode: standalone)').matches
+                });
+            }, 2000);
         });
     </script>
 </body>
