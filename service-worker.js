@@ -1,12 +1,10 @@
-const CACHE_NAME = 'gamehub-v2.1.0';
-const DYNAMIC_CACHE_NAME = 'gamehub-dynamic-v1';
+[file content begin]
+const CACHE_NAME = 'gamehub-v3.0.0'; // Suppression du cache dynamique
 
 const STATIC_ASSETS = [
   './',
   './index.html',
-  './login.html',
-  './accueil.html',
-  './jeux.html',
+  './offline.html',         // Page de fallback hors ligne
   './manifest.json',
   './icons/192.png',
   './icons/512.png',
@@ -17,12 +15,8 @@ const STATIC_ASSETS = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => {
-        return cache.addAll(STATIC_ASSETS);
-      })
-      .then(() => {
-        return self.skipWaiting();
-      })
+      .then((cache) => cache.addAll(STATIC_ASSETS))
+      .then(() => self.skipWaiting())
   );
 });
 
@@ -31,14 +25,13 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME && cacheName !== DYNAMIC_CACHE_NAME) {
+          // Supprimer tous les caches sauf le cache statique actuel
+          if (cacheName !== CACHE_NAME) {
             return caches.delete(cacheName);
           }
         })
       );
-    }).then(() => {
-      return self.clients.claim();
-    })
+    }).then(() => self.clients.claim())
   );
 });
 
@@ -47,34 +40,54 @@ self.addEventListener('fetch', (event) => {
   
   const url = new URL(event.request.url);
   
+  // Stratégie réseau uniquement pour les appels API (pas de cache)
   if (url.pathname.includes('/api/')) {
-    event.respondWith(networkFirstStrategy(event.request));
+    event.respondWith(networkOnlyStrategy(event.request));
     return;
   }
   
-  event.respondWith(cacheFirstStrategy(event.request));
+  // Pour toutes les autres requêtes : cache-first, sans mise en cache dynamique
+  event.respondWith(cacheOnlyStrategy(event.request));
 });
 
-async function cacheFirstStrategy(request) {
-  const cachedResponse = await caches.match(request);
+async function cacheOnlyStrategy(request) {
+  const url = new URL(request.url);
   
+  // --- GESTION SPÉCIALE PAGES HTML (hors index.html et offline.html) ---
+  // Ces pages sont toujours servies depuis le réseau, jamais mises en cache.
+  // En cas d'échec réseau, on sert la page offline.html (depuis le cache statique).
+  if (url.pathname.endsWith('.html') && 
+      !url.pathname.endsWith('/index.html') && 
+      !url.pathname.endsWith('/offline.html') && 
+      url.origin === self.location.origin) {
+    try {
+      return await fetch(request);
+    } catch (error) {
+      const offlinePage = await caches.match('./offline.html');
+      if (offlinePage) return offlinePage;
+      // Fallback ultime
+      const indexPage = await caches.match('./index.html');
+      if (indexPage) return indexPage;
+      return new Response('Connectivité réseau perdue', { status: 408 });
+    }
+  }
+  
+  // --- STRATÉGIE CACHE-ONLY : on sert depuis le cache statique ---
+  const cachedResponse = await caches.match(request);
   if (cachedResponse) {
     return cachedResponse;
   }
   
+  // Si pas dans le cache, on tente le réseau mais on ne met PAS en cache
   try {
-    const networkResponse = await fetch(request);
-    
-    if (networkResponse.ok) {
-      const cache = await caches.open(DYNAMIC_CACHE_NAME);
-      cache.put(request, networkResponse.clone());
-    }
-    
-    return networkResponse;
+    return await fetch(request);
   } catch (error) {
+    // Fallback pour les requêtes HTML (cas non couvert ci-dessus)
     if (request.headers.get('accept').includes('text/html')) {
-      const fallback = await caches.match('./index.html');
-      if (fallback) return fallback;
+      const offlinePage = await caches.match('./offline.html');
+      if (offlinePage) return offlinePage;
+      const indexPage = await caches.match('./index.html');
+      if (indexPage) return indexPage;
     }
     
     return new Response('Connectivité réseau perdue', {
@@ -84,18 +97,16 @@ async function cacheFirstStrategy(request) {
   }
 }
 
-async function networkFirstStrategy(request) {
+async function networkOnlyStrategy(request) {
+  // Pour les API : réseau uniquement, aucun cache
   try {
-    const networkResponse = await fetch(request);
-    
-    const cache = await caches.open(DYNAMIC_CACHE_NAME);
-    cache.put(request, networkResponse.clone());
-    
-    return networkResponse;
+    return await fetch(request);
   } catch (error) {
-    const cachedResponse = await caches.match(request);
-    return cachedResponse || new Response(JSON.stringify({ error: 'Hors ligne' }), {
+    // En cas d'absence de réseau, retourner une erreur JSON
+    return new Response(JSON.stringify({ error: 'Hors ligne' }), {
+      status: 408,
       headers: { 'Content-Type': 'application/json' }
     });
   }
 }
+[file content end]
