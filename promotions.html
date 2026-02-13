@@ -64,36 +64,9 @@
         // Fonction pour enregistrer un achat dans Firestore (version pack)
         window.registerPackPurchase = async function(packId, packName, packType, price, games = []) {
             try {
-                const user = auth.currentUser;
-                if (!user) {
-                    showNotification('Erreur', 'Vous devez être connecté pour effectuer un achat', 'error', 4000);
-                    return false;
-                }
-                
-                // Récupérer les données utilisateur pour savoir qui est le parrain
-                const userData = await window.getUserData(user.uid);
-                const referredBy = userData?.referredBy || null;
-                
-                // Enregistrer l'achat du pack dans la collection 'purchases'
-                const purchaseData = {
-                    userId: user.uid,
-                    userEmail: user.email,
-                    packId: packId,
-                    packName: packName,
-                    packType: packType,
-                    games: games,
-                    price: price,
-                    purchaseDate: new Date().toISOString(),
-                    referredBy: referredBy,
-                    commission: price * 0.3, // 30% de commission
-                    status: 'completed',
-                    isPack: true
-                };
-                
-                await addDoc(collection(db, 'purchases'), purchaseData);
-                
-                console.log('Achat de pack enregistré avec succès');
-                return true;
+                // Fonction désactivée pour le moment
+                showNotification('Fonctionnalité en cours de développement', 'Cette fonctionnalité sera disponible dans une prochaine mise à jour.', 'info', 4000);
+                return false;
                 
             } catch (error) {
                 console.error('Erreur lors de l\'enregistrement de l\'achat du pack:', error);
@@ -105,32 +78,9 @@
         // Fonction pour enregistrer un achat individuel dans Firestore
         window.registerPurchase = async function(gameId, gameName, plan, price) {
             try {
-                const user = auth.currentUser;
-                if (!user) {
-                    showNotification('Erreur', 'Vous devez être connecté pour effectuer un achat', 'error', 4000);
-                    return false;
-                }
-                
-                // Récupérer les données utilisateur pour savoir qui est le parrain
-                const userData = await window.getUserData(user.uid);
-                const referredBy = userData?.referredBy || null;
-                
-                // Enregistrer l'achat dans la collection 'purchases'
-                await addDoc(collection(db, 'purchases'), {
-                    userId: user.uid,
-                    userEmail: user.email,
-                    gameId: gameId,
-                    gameName: gameName,
-                    plan: plan,
-                    price: price,
-                    purchaseDate: new Date().toISOString(),
-                    referredBy: referredBy,
-                    commission: price * 0.3, // 30% de commission
-                    status: 'completed'
-                });
-                
-                console.log('Achat enregistré avec succès');
-                return true;
+                // Fonction désactivée pour le moment
+                showNotification('Fonctionnalité en cours de développement', 'Cette fonctionnalité sera disponible dans une prochaine mise à jour.', 'info', 4000);
+                return false;
                 
             } catch (error) {
                 console.error('Erreur lors de l\'enregistrement de l\'achat:', error);
@@ -966,6 +916,122 @@
             font-weight: 600;
         }
 
+        /* NOUVEAU: Overlay de page en construction - PLUS TRANSPARENT */
+        .page-construction-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6); /* Changé de 0.9 à 0.6 pour plus de transparence */
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 20px;
+            backdrop-filter: blur(2px); /* Réduit le flou pour mieux voir le contenu */
+        }
+
+        .construction-icon {
+            font-size: 4rem;
+            color: var(--accent);
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 50%;
+            width: 100px;
+            height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(5px);
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .construction-title {
+            font-size: 2.5rem;
+            color: var(--accent);
+            margin-bottom: 15px;
+            font-weight: 700;
+            background: linear-gradient(to right, var(--accent), var(--primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .construction-message {
+            font-size: 1.2rem;
+            color: white; /* Changé en blanc pour mieux contraster */
+            margin-bottom: 25px;
+            max-width: 600px;
+            line-height: 1.6;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, 0.4);
+            padding: 15px;
+            border-radius: var(--radius);
+            backdrop-filter: blur(5px);
+        }
+
+        .construction-features {
+            background: rgba(255, 255, 255, 0.15); /* Plus transparent */
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: 30px;
+            max-width: 500px;
+            width: 100%;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .construction-features h3 {
+            color: var(--accent);
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .features-list {
+            list-style: none;
+            text-align: left;
+            color: white; /* Changé en blanc pour mieux contraster */
+        }
+
+        .features-list li {
+            margin-bottom: 10px;
+            padding-left: 25px;
+            position: relative;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .features-list li:before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: var(--success);
+            font-weight: bold;
+        }
+
+        .construction-note {
+            color: var(--warning);
+            font-size: 1rem;
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(255, 193, 7, 0.15); /* Plus transparent */
+            border-radius: var(--radius);
+            max-width: 500px;
+            width: 100%;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 193, 7, 0.2);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
         /* Responsive Design */
         
         /* Tablettes */
@@ -994,6 +1060,21 @@
             
             .buy-promo-btn {
                 width: 100%;
+            }
+
+            /* Construction overlay responsive */
+            .construction-title {
+                font-size: 2rem;
+            }
+            
+            .construction-message {
+                font-size: 1rem;
+            }
+            
+            .construction-icon {
+                font-size: 3rem;
+                width: 80px;
+                height: 80px;
             }
         }
 
@@ -1214,6 +1295,33 @@
             .nav-icon {
                 font-size: 15px;
             }
+
+            /* Construction overlay responsive */
+            .construction-title {
+                font-size: 1.8rem;
+            }
+            
+            .construction-message {
+                font-size: 0.9rem;
+            }
+            
+            .construction-icon {
+                font-size: 2.5rem;
+                width: 70px;
+                height: 70px;
+            }
+            
+            .construction-features {
+                padding: 15px;
+            }
+            
+            .construction-features h3 {
+                font-size: 1.1rem;
+            }
+            
+            .features-list li {
+                font-size: 0.9rem;
+            }
         }
 
         /* Très petits écrans */
@@ -1310,6 +1418,10 @@
                 animation-iteration-count: 1 !important;
                 transition-duration: 0.01ms !important;
             }
+            
+            .construction-icon {
+                animation: none;
+            }
         }
 
         /* Correction pour le défilement sur iOS */
@@ -1329,6 +1441,34 @@
     </style>
 </head>
 <body>
+    <!-- Overlay de page en construction - PLUS TRANSPARENT -->
+    <div class="page-construction-overlay">
+        <div class="construction-icon">
+            <i class="fas fa-tools"></i>
+        </div>
+        <h1 class="construction-title">Page en Construction</h1>
+        <p class="construction-message">
+            Cette section des promotions n'est pas encore disponible. Nous travaillons activement à développer 
+            des offres exclusives et des packs avantageux pour vous.
+        </p>
+        
+        <div class="construction-features">
+            <h3>Fonctionnalités à venir :</h3>
+            <ul class="features-list">
+                <li>Packs de jeux avec réductions exclusives</li>
+                <li>Offres limitées dans le temps</li>
+                <li>Système de parrainage avec commissions</li>
+                <li>Abonnements premium avec avantages</li>
+                <li>Promotions saisonnières et événements spéciaux</li>
+            </ul>
+        </div>
+        
+        <div class="construction-note">
+            <i class="fas fa-exclamation-triangle"></i>
+            <strong>Note :</strong> Ces fonctionnalités seront bientôt disponibles dans une prochaine mise à jour. Restez à l'écoute !
+        </div>
+    </div>
+
     <!-- Système de notifications -->
     <div class="notification-system" id="notificationSystem"></div>
 
@@ -1392,7 +1532,7 @@
                             <i class="fas fa-clock"></i>
                             <span>Se termine dans 2 jours</span>
                         </div>
-                        <button class="buy-promo-btn" onclick="showPromoModal('ultimate-pack')">
+                        <button class="buy-promo-btn" onclick="showConstructionMessage()">
                             <i class="fas fa-bolt"></i> Acheter maintenant
                         </button>
                     </div>
@@ -1435,7 +1575,7 @@
                             <i class="fas fa-clock"></i>
                             <span>Se termine dans 5 jours</span>
                         </div>
-                        <button class="buy-promo-btn" onclick="showDuoPackSelection()">
+                        <button class="buy-promo-btn" onclick="showConstructionMessage()">
                             <i class="fas fa-shopping-cart"></i> Acheter maintenant
                         </button>
                     </div>
@@ -1478,7 +1618,7 @@
                             <i class="fas fa-clock"></i>
                             <span>Se termine dans 7 jours</span>
                         </div>
-                        <button class="buy-promo-btn" onclick="showTrioPackSelection()">
+                        <button class="buy-promo-btn" onclick="showConstructionMessage()">
                             <i class="fas fa-crown"></i> Acheter maintenant
                         </button>
                     </div>
@@ -1527,7 +1667,7 @@
                             <i class="fas fa-infinity"></i>
                             <span>Offre permanente</span>
                         </div>
-                        <button class="buy-promo-btn" onclick="showPromoModal('api-access')">
+                        <button class="buy-promo-btn" onclick="showConstructionMessage()">
                             <i class="fas fa-plug"></i> Souscrire
                         </button>
                     </div>
@@ -1574,7 +1714,7 @@
                             <i class="fas fa-infinity"></i>
                             <span>Offre permanente</span>
                         </div>
-                        <button class="buy-promo-btn" onclick="showPromoModal('vip-support')">
+                        <button class="buy-promo-btn" onclick="showConstructionMessage()">
                             <i class="fas fa-headset"></i> Souscrire
                         </button>
                     </div>
@@ -1625,7 +1765,7 @@
             </div>
             <div class="modal-actions">
                 <button class="cancel-btn" onclick="closePromoModal()">Annuler</button>
-                <button class="confirm-btn" onclick="confirmPromoPurchase()">Confirmer l'achat</button>
+                <button class="confirm-btn" onclick="showConstructionMessage()">Confirmer l'achat</button>
             </div>
         </div>
     </div>
@@ -1671,7 +1811,7 @@
             </div>
             <div class="modal-actions">
                 <button class="cancel-btn" onclick="closeDuoPackModal()">Annuler</button>
-                <button class="confirm-btn" id="confirmDuoBtn" onclick="confirmDuoPurchase()" disabled>Confirmer la sélection</button>
+                <button class="confirm-btn" id="confirmDuoBtn" onclick="showConstructionMessage()" disabled>Confirmer la sélection</button>
             </div>
         </div>
     </div>
@@ -1717,7 +1857,7 @@
             </div>
             <div class="modal-actions">
                 <button class="cancel-btn" onclick="closeTrioPackModal()">Annuler</button>
-                <button class="confirm-btn" id="confirmTrioBtn" onclick="confirmTrioPurchase()" disabled>Confirmer la sélection</button>
+                <button class="confirm-btn" id="confirmTrioBtn" onclick="showConstructionMessage()" disabled>Confirmer la sélection</button>
             </div>
         </div>
     </div>
@@ -1789,22 +1929,19 @@
             }
         };
 
-        // Fonction pour afficher la modale de promotion
+        // Fonction pour afficher le message de construction
+        function showConstructionMessage() {
+            showNotification(
+                'Fonctionnalité en développement',
+                'Cette page des promotions est en cours de construction. Les fonctionnalités d\'achat seront disponibles dans une prochaine mise à jour.',
+                'info',
+                5000
+            );
+        }
+
+        // Fonction pour afficher la modale de promotion (désactivée)
         function showPromoModal(promoId) {
-            const promo = promoDetails[promoId];
-            if (promo) {
-                currentPromoId = promoId;
-                document.getElementById('promoModalTitle').textContent = promo.title;
-                document.getElementById('promoModalPrice').textContent = promo.price.toLocaleString() + 'fr';
-                document.getElementById('promoModalDuration').textContent = 'Durée: ' + promo.duration;
-                document.getElementById('promoModalFeatures').innerHTML = `
-                    <i class="fas fa-check feature-icon"></i>
-                    ${promo.features}
-                `;
-                
-                document.getElementById('promoModal').classList.add('active');
-                document.body.style.overflow = 'hidden';
-            }
+            showConstructionMessage();
         }
 
         // Fonction pour fermer la modale de promotion
@@ -1813,36 +1950,9 @@
             document.body.style.overflow = 'auto';
         }
 
-        // Fonction pour afficher la modale de sélection Duo Pack
+        // Fonction pour afficher la modale de sélection Duo Pack (désactivée)
         function showDuoPackSelection() {
-            currentPromoId = 'duo-pack';
-            selectedGames = [];
-            
-            // Générer les options de jeu
-            const gameOptionsContainer = document.getElementById('gameOptions');
-            gameOptionsContainer.innerHTML = '';
-            
-            availableGames.forEach(game => {
-                const gameOption = document.createElement('div');
-                gameOption.className = 'game-option';
-                gameOption.dataset.gameId = game.id;
-                gameOption.innerHTML = `
-                    <div class="game-icon">
-                        <i class="${game.icon}"></i>
-                    </div>
-                    <div class="game-name">${game.name}</div>
-                `;
-                
-                gameOption.addEventListener('click', () => toggleGameSelection(game.id, 'duo'));
-                gameOptionsContainer.appendChild(gameOption);
-            });
-            
-            // Réinitialiser l'état de sélection
-            document.getElementById('selectionStatus').style.display = 'none';
-            document.getElementById('confirmDuoBtn').disabled = true;
-            
-            document.getElementById('duoPackModal').classList.add('active');
-            document.body.style.overflow = 'hidden';
+            showConstructionMessage();
         }
 
         // Fonction pour fermer la modale Duo Pack
@@ -1851,36 +1961,9 @@
             document.body.style.overflow = 'auto';
         }
 
-        // Fonction pour afficher la modale de sélection Trio Pack
+        // Fonction pour afficher la modale de sélection Trio Pack (désactivée)
         function showTrioPackSelection() {
-            currentPromoId = 'trio-pack';
-            selectedTrioGames = [];
-            
-            // Générer les options de jeu
-            const gameOptionsContainer = document.getElementById('trioGameOptions');
-            gameOptionsContainer.innerHTML = '';
-            
-            availableGames.forEach(game => {
-                const gameOption = document.createElement('div');
-                gameOption.className = 'game-option';
-                gameOption.dataset.gameId = game.id;
-                gameOption.innerHTML = `
-                    <div class="game-icon">
-                        <i class="${game.icon}"></i>
-                    </div>
-                    <div class="game-name">${game.name}</div>
-                `;
-                
-                gameOption.addEventListener('click', () => toggleGameSelection(game.id, 'trio'));
-                gameOptionsContainer.appendChild(gameOption);
-            });
-            
-            // Réinitialiser l'état de sélection
-            document.getElementById('trioSelectionStatus').style.display = 'none';
-            document.getElementById('confirmTrioBtn').disabled = true;
-            
-            document.getElementById('trioPackModal').classList.add('active');
-            document.body.style.overflow = 'hidden';
+            showConstructionMessage();
         }
 
         // Fonction pour fermer la modale Trio Pack
@@ -1889,370 +1972,34 @@
             document.body.style.overflow = 'auto';
         }
 
-        // Fonction pour basculer la sélection d'un jeu
+        // Fonction pour basculer la sélection d'un jeu (désactivée)
         function toggleGameSelection(gameId, packType) {
-            if (packType === 'duo') {
-                const gameOption = document.querySelector(`#gameOptions .game-option[data-game-id="${gameId}"]`);
-                const index = selectedGames.indexOf(gameId);
-                
-                if (index === -1) {
-                    // Ajouter le jeu si moins de 2 sélectionnés
-                    if (selectedGames.length < 2) {
-                        selectedGames.push(gameId);
-                        gameOption.classList.add('selected');
-                    } else {
-                        showNotification(
-                            'Sélection maximale',
-                            'Vous ne pouvez sélectionner que 2 jeux maximum.',
-                            'warning',
-                            3000
-                        );
-                        return;
-                    }
-                } else {
-                    // Retirer le jeu
-                    selectedGames.splice(index, 1);
-                    gameOption.classList.remove('selected');
-                }
-                
-                // Mettre à jour l'état de sélection
-                updateSelectionStatus('duo');
-            } else if (packType === 'trio') {
-                const gameOption = document.querySelector(`#trioGameOptions .game-option[data-game-id="${gameId}"]`);
-                const index = selectedTrioGames.indexOf(gameId);
-                
-                if (index === -1) {
-                    // Ajouter le jeu si moins de 3 sélectionnés
-                    if (selectedTrioGames.length < 3) {
-                        selectedTrioGames.push(gameId);
-                        gameOption.classList.add('selected');
-                    } else {
-                        showNotification(
-                            'Sélection maximale',
-                            'Vous ne pouvez sélectionner que 3 jeux maximum.',
-                            'warning',
-                            3000
-                        );
-                        return;
-                    }
-                } else {
-                    // Retirer le jeu
-                    selectedTrioGames.splice(index, 1);
-                    gameOption.classList.remove('selected');
-                }
-                
-                // Mettre à jour l'état de sélection
-                updateSelectionStatus('trio');
-            }
+            showConstructionMessage();
         }
 
-        // Fonction pour mettre à jour l'état de sélection
+        // Fonction pour mettre à jour l'état de sélection (désactivée)
         function updateSelectionStatus(packType) {
-            if (packType === 'duo') {
-                const statusElement = document.getElementById('selectionStatus');
-                const countElement = document.getElementById('selectedCount');
-                const confirmBtn = document.getElementById('confirmDuoBtn');
-                
-                if (selectedGames.length > 0) {
-                    statusElement.style.display = 'block';
-                    countElement.textContent = `${selectedGames.length}/2 jeux sélectionnés`;
-                    
-                    // Activer/désactiver le bouton de confirmation
-                    confirmBtn.disabled = selectedGames.length !== 2;
-                } else {
-                    statusElement.style.display = 'none';
-                    confirmBtn.disabled = true;
-                }
-            } else if (packType === 'trio') {
-                const statusElement = document.getElementById('trioSelectionStatus');
-                const countElement = document.getElementById('trioSelectedCount');
-                const confirmBtn = document.getElementById('confirmTrioBtn');
-                
-                if (selectedTrioGames.length > 0) {
-                    statusElement.style.display = 'block';
-                    countElement.textContent = `${selectedTrioGames.length}/3 jeux sélectionnés`;
-                    
-                    // Activer/désactiver le bouton de confirmation
-                    confirmBtn.disabled = selectedTrioGames.length !== 3;
-                } else {
-                    statusElement.style.display = 'none';
-                    confirmBtn.disabled = true;
-                }
-            }
+            // Fonction désactivée
         }
 
-        // Fonction pour déterminer le jeu gratuit
+        // Fonction pour déterminer le jeu gratuit (désactivée)
         function getFreeGame(selectedGames) {
-            // Priorité: Mines ou Thimbles s'ils ne sont pas sélectionnés
-            const priorityGames = ['mines', 'king-thimbles'];
-            
-            for (const gameId of priorityGames) {
-                if (!selectedGames.includes(gameId)) {
-                    return gameId;
-                }
-            }
-            
-            // Sinon, prendre le premier jeu non sélectionné
-            for (const game of availableGames) {
-                if (!selectedGames.includes(game.id)) {
-                    return game.id;
-                }
-            }
-            
-            // Par défaut, retourner Mines
             return 'mines';
         }
 
-        // Fonction pour confirmer l'achat Duo Pack avec Firebase
+        // Fonction pour confirmer l'achat Duo Pack (désactivée)
         async function confirmDuoPurchase() {
-            if (selectedGames.length !== 2) {
-                showNotification(
-                    'Sélection incomplète',
-                    'Veuillez sélectionner exactement 2 jeux.',
-                    'warning',
-                    4000
-                );
-                return;
-            }
-            
-            // Déterminer le jeu gratuit
-            const freeGameId = getFreeGame(selectedGames);
-            const freeGame = availableGames.find(game => game.id === freeGameId);
-            
-            const selectedGameNames = selectedGames.map(id => 
-                availableGames.find(game => game.id === id).name
-            ).join(', ');
-            
-            // Enregistrer l'achat du pack dans Firebase
-            const purchaseSuccess = await window.registerPackPurchase(
-                'duo-pack',
-                'Pack Duo',
-                'duo',
-                20000,
-                [...selectedGames, freeGameId]
-            );
-            
-            if (purchaseSuccess) {
-                showNotification(
-                    'Achat réussi !',
-                    `Pack Duo confirmé! Jeux sélectionnés: ${selectedGameNames}. Jeu gratuit: ${freeGame.name}.`,
-                    'success',
-                    5000
-                );
-                
-                // Sauvegarder l'achat dans le localStorage
-                let purchasedGames = JSON.parse(localStorage.getItem('purchasedGames') || '[]');
-                
-                // Ajouter les jeux sélectionnés avec une durée de 1 mois
-                selectedGames.forEach(gameId => {
-                    const game = availableGames.find(g => g.id === gameId);
-                    if (game && !purchasedGames.some(item => item.gameId === gameId)) {
-                        purchasedGames.push({
-                            gameId: gameId,
-                            gameName: game.name,
-                            plan: 'duo-pack',
-                            planName: 'Forfait Duo Pack (1 mois)',
-                            price: 20000,
-                            purchaseDate: new Date().toISOString(),
-                            duration: '1 mois',
-                            isPack: true
-                        });
-                    }
-                });
-                
-                // Ajouter le jeu gratuit
-                if (!purchasedGames.some(item => item.gameId === freeGameId)) {
-                    purchasedGames.push({
-                        gameId: freeGameId,
-                        gameName: freeGame.name,
-                        plan: 'duo-pack-free',
-                        planName: 'Forfait Duo Pack (Gratuit - 1 mois)',
-                        price: 0,
-                        purchaseDate: new Date().toISOString(),
-                        duration: '1 mois',
-                        isPack: true
-                    });
-                }
-                
-                localStorage.setItem('purchasedGames', JSON.stringify(purchasedGames));
-                
-                // Fermer la modale
-                closeDuoPackModal();
-                
-                // Rediriger vers la page des jeux après un délai
-                setTimeout(() => {
-                    window.location.href = 'jeux.html';
-                }, 2000);
-            } else {
-                showNotification(
-                    'Erreur',
-                    'Impossible d\'enregistrer l\'achat. Veuillez réessayer.',
-                    'error',
-                    4000
-                );
-            }
+            showConstructionMessage();
         }
 
-        // Fonction pour confirmer l'achat Trio Pack avec Firebase
+        // Fonction pour confirmer l'achat Trio Pack (désactivée)
         async function confirmTrioPurchase() {
-            if (selectedTrioGames.length !== 3) {
-                showNotification(
-                    'Sélection incomplète',
-                    'Veuillez sélectionner exactement 3 jeux.',
-                    'warning',
-                    4000
-                );
-                return;
-            }
-            
-            const selectedGameNames = selectedTrioGames.map(id => 
-                availableGames.find(game => game.id === id).name
-            ).join(', ');
-            
-            // Enregistrer l'achat du pack dans Firebase
-            const purchaseSuccess = await window.registerPackPurchase(
-                'trio-pack',
-                'Pack Mensuel',
-                'trio',
-                30000,
-                selectedTrioGames
-            );
-            
-            if (purchaseSuccess) {
-                showNotification(
-                    'Achat réussi !',
-                    `Pack Mensuel confirmé! Jeux sélectionnés: ${selectedGameNames}.`,
-                    'success',
-                    5000
-                );
-                
-                // Sauvegarder l'achat dans le localStorage
-                let purchasedGames = JSON.parse(localStorage.getItem('purchasedGames') || '[]');
-                
-                // Ajouter les jeux sélectionnés avec une durée de 1 mois
-                selectedTrioGames.forEach(gameId => {
-                    const game = availableGames.find(g => g.id === gameId);
-                    if (game && !purchasedGames.some(item => item.gameId === gameId)) {
-                        purchasedGames.push({
-                            gameId: gameId,
-                            gameName: game.name,
-                            plan: 'trio-pack',
-                            planName: 'Forfait Mensuel Pack (1 mois)',
-                            price: 30000,
-                            purchaseDate: new Date().toISOString(),
-                            duration: '1 mois',
-                            isPack: true
-                        });
-                    }
-                });
-                
-                localStorage.setItem('purchasedGames', JSON.stringify(purchasedGames));
-                
-                // Fermer la modale
-                closeTrioPackModal();
-                
-                // Rediriger vers la page des jeux après un délai
-                setTimeout(() => {
-                    window.location.href = 'jeux.html';
-                }, 2000);
-            } else {
-                showNotification(
-                    'Erreur',
-                    'Impossible d\'enregistrer l\'achat. Veuillez réessayer.',
-                    'error',
-                    4000
-                );
-            }
+            showConstructionMessage();
         }
 
-        // Fonction pour confirmer l'achat d'une promotion avec Firebase
+        // Fonction pour confirmer l'achat d'une promotion (désactivée)
         async function confirmPromoPurchase() {
-            const promo = promoDetails[currentPromoId];
-            if (!promo) return;
-
-            // Pour le Pack Ultimate, nous devons enregistrer tous les jeux
-            if (currentPromoId === 'ultimate-pack') {
-                // Enregistrer l'achat du pack dans Firebase
-                const purchaseSuccess = await window.registerPackPurchase(
-                    'ultimate-pack',
-                    'Pack Ultimate',
-                    'ultimate',
-                    promo.price,
-                    availableGames.map(game => game.id)
-                );
-                
-                if (purchaseSuccess) {
-                    showNotification(
-                        'Pack Ultimate débloqué !',
-                        'Tous les jeux ont été ajoutés à votre collection. Accès pendant 6 mois.',
-                        'success',
-                        5000
-                    );
-                    
-                    // Sauvegarder dans le localStorage
-                    let purchasedGames = JSON.parse(localStorage.getItem('purchasedGames') || '[]');
-                    
-                    // Ajouter tous les jeux disponibles
-                    availableGames.forEach(game => {
-                        if (!purchasedGames.some(item => item.gameId === game.id)) {
-                            purchasedGames.push({
-                                gameId: game.id,
-                                gameName: game.name,
-                                plan: 'ultimate-pack',
-                                planName: 'Forfait Ultimate Pack',
-                                price: promo.price,
-                                purchaseDate: new Date().toISOString(),
-                                duration: '6 mois',
-                                isPack: true
-                            });
-                        }
-                    });
-                    
-                    localStorage.setItem('purchasedGames', JSON.stringify(purchasedGames));
-                } else {
-                    showNotification(
-                        'Erreur',
-                        'Impossible d\'enregistrer l\'achat. Veuillez réessayer.',
-                        'error',
-                        4000
-                    );
-                    return;
-                }
-            } else {
-                // Pour les autres promotions (API, Support VIP)
-                // Enregistrer comme un achat normal
-                const purchaseSuccess = await window.registerPurchase(
-                    currentPromoId,
-                    promo.title,
-                    'promo',
-                    promo.price
-                );
-                
-                if (!purchaseSuccess) {
-                    showNotification(
-                        'Erreur',
-                        'Impossible d\'enregistrer l\'achat. Veuillez réessayer.',
-                        'error',
-                        4000
-                    );
-                    return;
-                }
-                
-                showNotification(
-                    'Achat réussi !',
-                    `Votre achat de ${promo.title} a été confirmé. Vous recevrez vos accès par email.`,
-                    'success',
-                    5000
-                );
-            }
-
-            // Fermer la modale
-            closePromoModal();
-
-            // Rediriger vers la page des jeux après un délai
-            setTimeout(() => {
-                window.location.href = 'jeux.html';
-            }, 2000);
+            showConstructionMessage();
         }
 
         // Initialisation au chargement de la page
