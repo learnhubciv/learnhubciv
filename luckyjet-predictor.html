@@ -4,11 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🚀 Predicteur Pro - Jeu Lucky Jet</title>
+    
+    <!-- CDN CSS -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Notre CSS personnalisé -->
     <link rel="stylesheet" href="luckyjet-predictor.css">
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <!-- Script Firebase (module) -->
+    <script type="module" src="luckyjet-predictor-firebase.js"></script>
 </head>
 <body class="bg-gray-50">
 
@@ -48,7 +54,7 @@
             <div class="dashboard-card">
                 <div class="auto-fetch-container">
                     <div class="auto-fetch-header flex justify-between items-center">
-                        <div class="auto-fetch-title font-bold text-blue-800 text-sm">
+                        <div class="auto-fetch-title font-bold text-purple-800 text-sm">
                             <i class="fas fa-sync-alt mr-2"></i> Récupération Automatique
                         </div>
                         <div class="auto-fetch-status text-gray-700 text-sm" id="autoFetchStatus">
@@ -68,7 +74,7 @@
                         <button onclick="stopAutoFetch()" class="flex-1 bg-gradient-to-r from-red-500 to-rose-600 text-white py-2 rounded-lg hover:opacity-90 transition font-semibold text-sm min-w-[120px]" disabled>
                             <i class="fas fa-stop mr-2"></i> Arrêter
                         </button>
-                        <button onclick="openAdvancedSettings()" class="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white py-2 rounded-lg hover:opacity-90 transition font-semibold text-sm min-w-[120px]" disabled>
+                        <button onclick="openAdvancedSettings()" class="flex-1 gradient-btn min-w-[120px]" disabled>
                             <i class="fas fa-cog mr-2"></i> Options
                         </button>
                     </div>
@@ -76,7 +82,7 @@
                 
                 <div id="result" class="bg-gray-50 rounded-lg p-4 mt-4 border border-gray-200">
                     <div class="text-center p-4">
-                        <i class="fas fa-key text-3xl text-blue-400 mb-3"></i>
+                        <i class="fas fa-key text-3xl text-purple-400 mb-3"></i>
                         <p class="text-gray-600">Le prédicteur est verrouillé</p>
                         <p class="text-sm text-gray-500 mt-1">Activez votre licence pour débloquer toutes les fonctionnalités</p>
                     </div>
@@ -88,11 +94,11 @@
         <div>
             <div class="stats-card mb-4">
                 <h3 class="text-lg font-bold text-gray-800 mb-3">
-                    <i class="fas fa-chart-pie text-blue-500 mr-2"></i>
+                    <i class="fas fa-chart-pie text-purple-500 mr-2"></i>
                     Statistiques Globales
                 </h3>
                 <div id="statsContainer" class="text-center">
-                    <p id="totalPredictions" class="text-2xl font-bold text-blue-600">0</p>
+                    <p id="totalPredictions" class="text-2xl font-bold text-purple-600">0</p>
                     <p id="predictionAccuracy" class="text-xl font-bold text-green-600 mt-1">0%</p>
                     <div class="grid grid-cols-3 gap-3 mt-3">
                         <div class="bg-green-100 p-2 rounded-lg">
@@ -106,7 +112,7 @@
                             <p id="failedCount" class="font-bold">0</p>
                         </div>
                         <div class="bg-blue-100 p-2 rounded-lg">
-                            <p class="text-lg font-bold text-blue-800">⏳</p>
+                            <p class="text-lg font-bold text-purple-800">⏳</p>
                             <p class="text-xs text-gray-700">En attente</p>
                             <p id="pendingCount" class="font-bold">0</p>
                         </div>
@@ -117,10 +123,10 @@
             <div class="stats-card mb-4">
                 <div class="flex justify-between items-center mb-3">
                     <h3 class="text-lg font-bold text-gray-800">
-                        <i class="fas fa-brain text-blue-500 mr-2"></i>
+                        <i class="fas fa-brain text-purple-500 mr-2"></i>
                         Analyse Intelligence
                     </h3>
-                    <button onclick="analyzeHistoricalData()" class="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-2 py-1 rounded-lg text-xs hover:opacity-90 transition" disabled>
+                    <button onclick="analyzeHistoricalData()" class="gradient-btn text-white px-2 py-1 rounded-lg text-xs hover:opacity-90 transition" disabled>
                         Actualiser
                     </button>
                 </div>
@@ -135,11 +141,11 @@
             <div class="dashboard-card">
                 <div class="flex justify-between items-center mb-3">
                     <h3 class="text-lg font-bold text-gray-800">
-                        <i class="fas fa-history text-blue-500 mr-2"></i>
+                        <i class="fas fa-history text-purple-500 mr-2"></i>
                         Historique des Prédictions
                     </h3>
                     <div class="flex gap-2">
-                        <button id="toggleHistory" class="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-2 py-1 rounded-lg text-xs hover:opacity-90 transition" onclick="toggleHistoryVisibility()">
+                        <button id="toggleHistory" class="gradient-btn text-white px-2 py-1 rounded-lg text-xs hover:opacity-90 transition" onclick="toggleHistoryVisibility()">
                             Masquer
                         </button>
                         <button id="deleteHistory" class="bg-gradient-to-r from-red-500 to-red-600 text-white px-2 py-1 rounded-lg text-xs hover:opacity-90 transition" onclick="deleteHistory()">
@@ -159,10 +165,7 @@
     </div>
 </div>
 
-<!-- Script Firebase -->
-<script type="module" src="luckyjet-predictor-firebase.js"></script>
-
-<!-- Script de l'application -->
+<!-- Script principal (non-module) -->
 <script src="luckyjet-predictor.js"></script>
 
 </body>

@@ -1,3 +1,10 @@
+/* Variables de couleur officielles Lucky Jet */
+:root {
+    --primary: #8a00e1;
+    --primary-dark: #6b00b3;
+    --primary-light: #9f4dff;
+}
+
 /* Ajouter les animations pour les messages de licence */
 @keyframes slideIn {
     from { transform: translateX(-50%) translateY(-20px); opacity: 0; }
@@ -36,7 +43,7 @@
 
 .coefficient-badge {
     display: inline-block;
-    background: linear-gradient(145deg, #1D4ED8, #3B82F6);
+    background: linear-gradient(145deg, var(--primary), var(--primary-dark)) !important;
     color: white;
     border-radius: 9999px;
     padding: 0.25rem 0.75rem;
@@ -80,7 +87,7 @@
 
 .round-indicator {
     display: inline-block;
-    background: linear-gradient(145deg, #1D4ED8, #3B82F6);
+    background: linear-gradient(145deg, var(--primary), var(--primary-dark)) !important;
     color: white;
     border-radius: 8px;
     padding: 0.3rem 0.8rem;
@@ -106,7 +113,7 @@
 }
 
 .robot-header {
-    background: linear-gradient(135deg, #1D4ED8, #3B82F6);
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark)) !important;
     color: white;
     border-radius: 12px;
     padding: 1rem;
@@ -131,9 +138,9 @@
 }
 
 @keyframes glow {
-    0% { box-shadow: 0 0 5px rgba(59, 130, 246, 0.5); }
-    50% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.8); }
-    100% { box-shadow: 0 0 5px rgba(59, 130, 246, 0.5); }
+    0% { box-shadow: 0 0 5px rgba(138, 0, 225, 0.5); }
+    50% { box-shadow: 0 0 20px rgba(138, 0, 225, 0.8); }
+    100% { box-shadow: 0 0 5px rgba(138, 0, 225, 0.5); }
 }
 
 .glowing {
@@ -149,7 +156,7 @@
 .confidence-fill {
     height: 100%;
     border-radius: 5px;
-    background: #3B82F6;
+    background: var(--primary) !important;
     transition: width 1s ease-in-out;
 }
 
@@ -173,8 +180,8 @@
 }
 
 .trend-stable {
-    background-color: rgba(59, 130, 246, 0.1);
-    color: #1D4ED8;
+    background-color: rgba(138, 0, 225, 0.1);
+    color: var(--primary);
 }
 
 .pattern-indicator {
@@ -199,9 +206,9 @@
 }
 
 .pattern-neutral {
-    background-color: rgba(59, 130, 246, 0.1);
-    color: #1D4ED8;
-    border-left: 3px solid #3B82F6;
+    background-color: rgba(138, 0, 225, 0.1);
+    color: var(--primary);
+    border-left: 3px solid var(--primary);
 }
 
 .duplicate-warning {
@@ -235,7 +242,7 @@ body {
 }
 
 .gradient-btn {
-    background: linear-gradient(135deg, #3B82F6, #1D4ED8);
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark)) !important;
     color: white;
     border: none;
     border-radius: 10px;
@@ -247,7 +254,7 @@ body {
 
 .gradient-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(59, 130, 246, 0.25);
+    box-shadow: 0 4px 8px rgba(138, 0, 225, 0.25);
 }
 
 .status-badge {
@@ -378,7 +385,7 @@ body {
 }
 
 .round-notification {
-    background: linear-gradient(145deg, #3B82F6, #1D4ED8);
+    background: linear-gradient(145deg, var(--primary), var(--primary-dark)) !important;
     color: white;
     padding: 12px;
     border-radius: 10px;
@@ -402,7 +409,7 @@ body {
 
 /* Ajouter un en-tête utilisateur */
 .user-header {
-    background: linear-gradient(135deg, #1D4ED8, #3B82F6);
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark)) !important;
     color: white;
     border-radius: 12px;
     padding: 1rem;
@@ -530,4 +537,21 @@ body {
     .feature-card {
         padding: 0.5rem;
     }
+}
+
+/* Surcharge des classes Tailwind pour remplacer le bleu par le violet */
+.bg-blue-500, .bg-blue-600, .bg-blue-700, .from-blue-500, .to-blue-600 {
+    background: var(--primary) !important;
+}
+.text-blue-600, .text-blue-800 {
+    color: var(--primary) !important;
+}
+.border-blue-500 {
+    border-color: var(--primary) !important;
+}
+.ring-blue-500 {
+    ring-color: var(--primary) !important;
+}
+.hover\:bg-blue-600:hover {
+    background: var(--primary-dark) !important;
 }
