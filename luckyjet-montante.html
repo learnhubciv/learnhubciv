@@ -814,6 +814,11 @@
         function disableBotFeatures() {
             console.log("Désactivation des fonctionnalités du bot");
             
+            // Appeler la fonction d'arrêt du bot si elle existe
+            if (typeof window.stopBot === 'function') {
+                window.stopBot();
+            }
+            
             // Afficher l'écran de verrouillage
             const licenseLock = document.getElementById('licenseLock');
             if (licenseLock) {
@@ -857,6 +862,11 @@
             
             // Activer les appels API
             window.isLicenseValid = true;
+            
+            // Démarrer le bot si la fonction est définie
+            if (typeof window.startBot === 'function') {
+                window.startBot();
+            }
         }
 
         // Exposer les fonctions globalement
@@ -900,30 +910,89 @@
         const VALIDATION_WINDOW = 40; // 40 secondes de fenêtre de validation
         const STATE_CHECK_AT = 5; // Vérifier l'état à 5 secondes de la fin
         
-        // Au chargement de la page
+        // Tableau pour stocker les intervalles du bot (pour pouvoir les arrêter)
+        let botIntervals = [];
+
+        // Fonction d'arrêt du bot (appelée depuis disableBotFeatures)
+        window.stopBot = function() {
+            console.log("Arrêt du bot...");
+            
+            // Arrêter tous les intervalles
+            botIntervals.forEach(interval => clearInterval(interval));
+            botIntervals = [];
+            
+            // Arrêter les autres intervalles spécifiques
+            if (flyingCheckInterval) {
+                clearInterval(flyingCheckInterval);
+                flyingCheckInterval = null;
+            }
+            if (gameStateCheckInterval) {
+                clearInterval(gameStateCheckInterval);
+                gameStateCheckInterval = null;
+            }
+            if (validationInterval) {
+                clearInterval(validationInterval);
+                validationInterval = null;
+            }
+            if (predictionTimeout) {
+                clearTimeout(predictionTimeout);
+                predictionTimeout = null;
+            }
+            
+            // Réinitialiser l'état
+            isPredictionActive = false;
+            
+            // Mettre à jour l'affichage
+            const multiplierElement = document.getElementById('multiplier');
+            if (multiplierElement) {
+                multiplierElement.textContent = 'BOT STOPPÉ';
+                multiplierElement.style.color = '#dc3545';
+            }
+            
+            const statusIndicator = document.getElementById('statusIndicator');
+            if (statusIndicator) {
+                statusIndicator.innerHTML = `<i class="fas fa-stop-circle"></i> Bot arrêté - Licence expirée`;
+                statusIndicator.style.color = '#dc3545';
+            }
+        };
+
+        // Fonction de démarrage du bot (appelée depuis enableBotFeatures)
+        window.startBot = function() {
+            console.log("Démarrage du bot...");
+            
+            // Si le bot tourne déjà, on le redémarre proprement
+            if (botIntervals.length > 0) {
+                window.stopBot();
+            }
+            
+            // Créer les étoiles (si pas déjà faites)
+            createStars();
+            
+            // Mettre à jour l'heure immédiatement
+            updateCurrentTime();
+            
+            // Lancer les intervalles principaux
+            botIntervals.push(setInterval(updateCurrentTime, 60000));
+            botIntervals.push(setInterval(fetchCoefficients, 5000));
+            
+            // Lancer une première récupération
+            fetchCoefficients();
+            
+            // Mettre à jour le statut
+            const statusIndicator = document.getElementById('statusIndicator');
+            if (statusIndicator) {
+                statusIndicator.innerHTML = `<i class="fas fa-sync fa-spin"></i> Analyse en cours...`;
+                statusIndicator.style.color = '';
+            }
+            
+            console.log("Bot démarré avec succès");
+        };
+
+        // Au chargement de la page, on initialise uniquement l'apparence
         document.addEventListener('DOMContentLoaded', function() {
             createStars();
             updateCurrentTime();
-            
-            // Attendre que la vérification de licence soit terminée avant de commencer
-            const checkLicenseAndStart = () => {
-                if (window.isLicenseValid === undefined) {
-                    setTimeout(checkLicenseAndStart, 100);
-                    return;
-                }
-                
-                if (window.isLicenseValid) {
-                    fetchCoefficients();
-                    
-                    // Mettre à jour l'heure toutes les minutes
-                    setInterval(updateCurrentTime, 60000);
-                    
-                    // Récupérer les coefficients toutes les 5 secondes
-                    setInterval(fetchCoefficients, 5000);
-                }
-            };
-            
-            checkLicenseAndStart();
+            // Le bot sera lancé par enableBotFeatures après validation de la licence
         });
         
         // Créer les étoiles en arrière-plan
