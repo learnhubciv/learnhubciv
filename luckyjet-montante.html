@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LuckyJet - Prédiction Automatique</title>
     <style>
+        /* (styles identiques à ceux fournis précédemment) */
         :root {
             --primary-color: #8a00e1;
             --primary-dark: #6b00b3;
@@ -697,8 +698,10 @@
                         false
                     );
                     
-                    // Activer les fonctionnalités du bot
-                    enableBotFeatures();
+                    // Activer les fonctionnalités du bot (seulement si elles ne le sont pas déjà)
+                    if (!window.botStarted) {
+                        enableBotFeatures();
+                    }
                     
                     // Masquer le message après 3 secondes
                     setTimeout(() => {
@@ -735,15 +738,13 @@
                 
             } catch (error) {
                 console.error('Erreur lors de la vérification de la licence:', error);
-                console.error('Détails de l\'erreur:', error.message);
-                
+                // En cas d'erreur technique, on ne désactive pas le bot, on continue
                 showLicenseMessage(
                     "Erreur technique", 
-                    "Impossible de vérifier votre licence. Veuillez réessayer.", 
+                    "Impossible de vérifier votre licence. Réessai automatique.", 
                     true
                 );
-                window.isLicenseValid = false;
-                disableBotFeatures();
+                // On ne modifie pas isLicenseValid, le bot continue de tourner
             }
         }
 
@@ -818,6 +819,7 @@
             if (typeof window.stopBot === 'function') {
                 window.stopBot();
             }
+            window.botStarted = false;
             
             // Afficher l'écran de verrouillage
             const licenseLock = document.getElementById('licenseLock');
@@ -866,6 +868,7 @@
             // Démarrer le bot si la fonction est définie
             if (typeof window.startBot === 'function') {
                 window.startBot();
+                window.botStarted = true;
             }
         }
 
@@ -912,6 +915,7 @@
         
         // Tableau pour stocker les intervalles du bot (pour pouvoir les arrêter)
         let botIntervals = [];
+        window.botStarted = false; // Indique si le bot a été démarré
 
         // Fonction d'arrêt du bot (appelée depuis disableBotFeatures)
         window.stopBot = function() {
@@ -941,6 +945,7 @@
             
             // Réinitialiser l'état
             isPredictionActive = false;
+            coefficientsHistory = [];
             
             // Mettre à jour l'affichage
             const multiplierElement = document.getElementById('multiplier');
@@ -962,7 +967,9 @@
             
             // Si le bot tourne déjà, on le redémarre proprement
             if (botIntervals.length > 0) {
-                window.stopBot();
+                // Mais on veut juste s'assurer que les intervalles sont en place
+                // On pourrait les relancer, mais pour l'instant on ne fait rien
+                return;
             }
             
             // Créer les étoiles (si pas déjà faites)
@@ -983,6 +990,13 @@
             if (statusIndicator) {
                 statusIndicator.innerHTML = `<i class="fas fa-sync fa-spin"></i> Analyse en cours...`;
                 statusIndicator.style.color = '';
+            }
+            
+            // Réinitialiser l'affichage du multiplicateur si besoin
+            const multiplierElement = document.getElementById('multiplier');
+            if (multiplierElement && multiplierElement.textContent === 'BOT STOPPÉ') {
+                multiplierElement.textContent = '0.00X';
+                multiplierElement.style.color = '';
             }
             
             console.log("Bot démarré avec succès");
@@ -1094,7 +1108,7 @@
             }
         }
         
-        // NOUVELLE MÉTHODE DE RÉCUPÉRATION DES COEFFICIENTS (du deuxième fichier)
+        // Récupération des coefficients (identique au premier fichier)
         async function fetchCoefficients() {
             // Vérifier la licence avant de continuer
             if (!window.checkLicenseBeforeOperation()) {
@@ -1111,7 +1125,7 @@
                 const coefficient = data.stopCoefficients?.[0] ?? null;
                 
                 if (coefficient !== null) {
-                    // Ajustement du coefficient comme dans le deuxième fichier
+                    // Ajustement du coefficient comme dans le premier fichier
                     const adjustedCoefficient = coefficient === 1.00 ? 1.01 : coefficient;
                     const roundedCoefficient = parseFloat(adjustedCoefficient.toFixed(2));
                     const now = Date.now();
@@ -1604,7 +1618,7 @@
                 return parseFloat(data.game.history[0]);
             }
             
-            // NOUVELLE MÉTHODE: Utiliser stopCoefficients
+            // Utiliser stopCoefficients
             if (data && data.stopCoefficients && Array.isArray(data.stopCoefficients) && data.stopCoefficients.length > 0) {
                 const coefficient = data.stopCoefficients[0];
                 const adjustedCoefficient = coefficient === 1.00 ? 1.01 : coefficient;
@@ -1614,7 +1628,7 @@
             return null;
         }
         
-        // Réinitialiser la prédiction
+        // Réinitialiser la prédiction (appelé après validation)
         function resetPrediction() {
             const multiplierElement = document.getElementById('multiplier');
             const circleInner = document.querySelector('.circle-inner');
