@@ -2,8 +2,8 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chargement - GameHub</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>GameHub - Installation requise</title>
     
     <!-- PWA Configuration -->
     <link rel="manifest" href="manifest.json">
@@ -14,11 +14,11 @@
     <link rel="apple-touch-icon" href="icons/icon-192x192.png">
     <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="icons/icon-16x16.png">
-    <meta name="mobile-web-app-capable" content="yes">
     
-    <!-- Font Awesome -->
+    <!-- Font Awesome & Lottie -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+    <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
+
     <style>
         * {
             margin: 0;
@@ -35,7 +35,9 @@
             --light: #F8F9FA;
             --success: #28A745;
             --warning: #FFC107;
-            --transition: all 0.3s ease;
+            --shadow: 0 2px 8px rgba(0,0,0,0.2);
+            --shadow-hover: 0 4px 12px rgba(138, 43, 226, 0.4);
+            --radius: 16px;
         }
 
         body {
@@ -43,181 +45,16 @@
             background: linear-gradient(135deg, #1A1A2E 0%, #16213E 50%, #0F3460 100%);
             color: var(--light);
             min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px;
             overflow-x: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            -webkit-tap-highlight-color: transparent;
-            padding: 20px;
-        }
-
-        .loading-container {
-            text-align: center;
-            max-width: 450px;
-            padding: 30px;
-            background: rgba(26, 26, 46, 0.8);
-            border-radius: 20px;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
-            border: 1px solid rgba(138, 43, 226, 0.3);
             position: relative;
-            z-index: 10;
+            font-size: 14px; /* Taille de base réduite */
         }
 
-        /* Logo animation */
-        .logo-wrapper {
-            position: relative;
-            width: 120px;
-            height: 120px;
-            margin: 0 auto 30px;
-        }
-
-        .logo-circle {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            border: 3px solid transparent;
-            animation: rotate 3s linear infinite;
-        }
-
-        .logo-circle:nth-child(1) {
-            border-top-color: var(--primary);
-            animation-delay: 0.1s;
-        }
-
-        .logo-circle:nth-child(2) {
-            border-right-color: var(--accent);
-            animation-delay: 0.2s;
-            animation-direction: reverse;
-        }
-
-        .logo-circle:nth-child(3) {
-            border-bottom-color: var(--secondary);
-            animation-delay: 0.3s;
-            animation-duration: 2.5s;
-        }
-
-        .logo-center {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 70px;
-            height: 70px;
-            background: linear-gradient(135deg, var(--primary), var(--accent));
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 28px;
-            color: white;
-            box-shadow: 0 0 30px rgba(138, 43, 226, 0.5);
-            z-index: 2;
-            transition: all 0.3s ease;
-            cursor: pointer;
-        }
-
-        .logo-center:hover {
-            transform: translate(-50%, -50%) scale(1.1);
-            box-shadow: 0 0 40px rgba(138, 43, 226, 0.7);
-        }
-
-        /* Pulsating dots */
-        .dots-container {
-            display: flex;
-            justify-content: center;
-            gap: 12px;
-            margin: 30px 0;
-        }
-
-        .dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: var(--accent);
-            animation: pulse 1.5s ease-in-out infinite;
-        }
-
-        .dot:nth-child(2) {
-            animation-delay: 0.2s;
-            background: var(--primary);
-        }
-
-        .dot:nth-child(3) {
-            animation-delay: 0.4s;
-            background: var(--secondary);
-        }
-
-        /* Text animation */
-        .loading-text {
-            font-size: 1.5rem;
-            font-weight: 700;
-            margin-bottom: 10px;
-            background: linear-gradient(to right, var(--primary), var(--accent), var(--secondary));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-size: 200% 200%;
-            animation: gradientShift 3s ease infinite;
-            transition: opacity 0.3s ease;
-        }
-
-        .loading-subtext {
-            color: rgba(255, 255, 255, 0.8);
-            font-size: 0.95rem;
-            margin-top: 5px;
-            transition: opacity 0.3s ease;
-            min-height: 20px;
-        }
-
-        /* Progress bar */
-        .progress-container {
-            width: 100%;
-            height: 6px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-            margin: 25px 0;
-            overflow: hidden;
-        }
-
-        .progress-bar {
-            height: 100%;
-            background: linear-gradient(to right, var(--primary), var(--accent));
-            border-radius: 10px;
-            width: 0%;
-            transition: width 0.5s ease;
-        }
-
-        /* Stats preview */
-        .stats-preview {
-            display: flex;
-            justify-content: center;
-            gap: 25px;
-            margin-top: 30px;
-            opacity: 0;
-            animation: fadeIn 0.5s ease 1s forwards;
-        }
-
-        .stat-preview {
-            text-align: center;
-            padding: 10px 15px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 10px;
-            min-width: 80px;
-        }
-
-        .stat-preview-value {
-            font-size: 1.3rem;
-            font-weight: 800;
-            color: var(--accent);
-            margin-bottom: 5px;
-        }
-
-        .stat-preview-label {
-            font-size: 0.75rem;
-            color: rgba(255, 255, 255, 0.7);
-        }
-
-        /* Particles background */
+        /* Particles background (conservé) */
         .particles {
             position: fixed;
             top: 0;
@@ -235,614 +72,608 @@
             opacity: 0.3;
             animation: float 15s infinite linear;
         }
+        .particle:nth-child(odd) { background: var(--primary); }
+        .particle:nth-child(even) { background: var(--secondary); }
 
-        .particle:nth-child(odd) {
-            background: var(--primary);
+        @keyframes float {
+            0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+            10% { opacity: 0.5; }
+            90% { opacity: 0.5; }
+            100% { transform: translateY(-100px) rotate(360deg); opacity: 0; }
         }
 
-        .particle:nth-child(even) {
-            background: var(--secondary);
+        /* ========== ÉCRAN D'INSTALLATION (mode navigateur) ========== */
+        #install-screen {
+            position: relative;
+            width: 100%;
+            max-width: 380px; /* Réduit de 450px à 380px */
+            background: rgba(26, 26, 46, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 24px; /* Légèrement réduit */
+            padding: 24px 16px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(138, 43, 226, 0.3);
+            text-align: center;
+            z-index: 10;
+            animation: fadeIn 0.6s ease;
         }
 
-        /* Action Buttons Container */
-        .actions-container {
-            margin-top: 30px;
+        .install-logo {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255,255,255,0.1);
+            padding: 6px 16px;
+            border-radius: 40px;
+            margin-bottom: 16px;
+            backdrop-filter: blur(5px);
+        }
+
+        .install-logo i {
+            font-size: 20px; /* Réduit */
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-right: 6px;
+        }
+
+        .install-logo span {
+            font-size: 1.2rem; /* Réduit de 1.4rem */
+            font-weight: 700;
+            background: linear-gradient(to right, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .install-title {
+            font-size: 1.5rem; /* Réduit de 1.8rem */
+            font-weight: 700;
+            margin: 10px 0 6px;
+            background: linear-gradient(to right, var(--primary), var(--accent), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .install-subtitle {
+            color: rgba(255,255,255,0.8);
+            margin-bottom: 20px;
+            font-size: 0.85rem; /* Réduit */
+        }
+
+        /* Cartes d'installation */
+        .install-cards {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin: 20px 0;
+        }
+
+        .install-card {
+            flex: 1 1 150px; /* Réduit */
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 16px 10px;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            transition: transform 0.2s;
+        }
+
+        .install-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--accent);
+        }
+
+        #android-card {
+            background: rgba(138, 43, 226, 0.15);
+            border-color: rgba(138, 43, 226, 0.4);
+        }
+        #ios-card {
+            background: rgba(0, 212, 255, 0.15);
+            border-color: rgba(0, 212, 255, 0.4);
+        }
+
+        .card-header {
             display: flex;
             flex-direction: column;
-            gap: 15px;
-            opacity: 0;
-            transform: translateY(20px);
-            transition: all 0.5s ease;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+        .card-header i {
+            font-size: 2rem; /* Réduit */
+            background: rgba(255,255,255,0.1);
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .card-header h3 {
+            font-size: 1rem; /* Réduit */
+            font-weight: 600;
+            color: white;
         }
 
-        .actions-container.show {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        /* Continue Button */
-        .continue-button {
+        #android-install-btn {
             background: linear-gradient(135deg, var(--primary), var(--accent));
             color: white;
             border: none;
-            border-radius: 50px;
-            padding: 16px 40px;
-            font-size: 16px;
-            font-weight: 700;
-            cursor: pointer;
-            box-shadow: 0 5px 20px rgba(138, 43, 226, 0.4);
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            margin: 10px auto;
-            min-width: 250px;
-        }
-
-        .continue-button:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(138, 43, 226, 0.6);
-        }
-
-        .continue-button i {
-            font-size: 18px;
-        }
-
-        /* Install Button */
-        .install-button {
-            background: rgba(255, 255, 255, 0.1);
-            color: var(--accent);
-            border: 2px solid var(--accent);
-            border-radius: 50px;
-            padding: 14px 30px;
-            font-size: 15px;
             font-weight: 600;
+            padding: 10px 12px; /* Réduit */
+            border-radius: 40px;
             cursor: pointer;
-            transition: all 0.3s ease;
+            font-size: 0.85rem; /* Réduit */
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(138,43,226,0.4);
+            width: 100%;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
-            margin: 5px auto;
-            min-width: 250px;
-            backdrop-filter: blur(10px);
+            gap: 6px;
+            animation: pulse 2s infinite;
+        }
+        #android-install-btn:hover {
+            transform: scale(1.03);
+            box-shadow: 0 8px 25px rgba(138,43,226,0.6);
+            animation: none;
         }
 
-        .install-button:hover {
-            background: var(--accent);
+        .ios-steps {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin: 12px 0 8px;
+        }
+        .step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            flex: 1;
+        }
+        .step-icon {
+            background: white;
             color: var(--dark);
-            transform: translateY(-3px);
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        .step-text {
+            font-size: 0.6rem; /* Réduit */
+            font-weight: 500;
+            color: rgba(255,255,255,0.9);
+            text-align: center;
+        }
+        .ios-note {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 0.6rem; /* Réduit */
+            background: rgba(255,255,255,0.1);
+            padding: 5px 8px;
+            border-radius: 40px;
+            backdrop-filter: blur(5px);
         }
 
-        .install-button i {
-            font-size: 16px;
-        }
-
-        /* Install Instructions */
-        .install-instructions {
-            background: rgba(0, 0, 0, 0.4);
-            border-radius: 15px;
-            padding: 15px;
-            margin-top: 20px;
-            border-left: 4px solid var(--accent);
-            text-align: left;
+        /* ========== ÉCRAN PRINCIPAL (mode standalone) ========== */
+        #main-content {
+            width: 100%;
+            max-width: 380px;
+            background: rgba(26, 26, 46, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 24px;
+            padding: 24px 16px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+            border: 1px solid rgba(138,43,226,0.3);
+            text-align: center;
+            z-index: 10;
             display: none;
         }
 
-        .install-instructions.show {
-            display: block;
-            animation: fadeIn 0.5s ease;
+        .main-logo {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255,255,255,0.1);
+            padding: 6px 16px;
+            border-radius: 40px;
+            margin-bottom: 16px;
+        }
+        .main-logo i {
+            font-size: 24px;
+            color: var(--accent);
+            margin-right: 6px;
+        }
+        .main-logo span {
+            font-size: 1.3rem; /* Réduit */
+            font-weight: 700;
+            color: white;
         }
 
-        .install-instructions h4 {
+        .welcome-title {
+            font-size: 1.7rem; /* Réduit */
+            font-weight: 700;
+            margin: 15px 0 6px;
+            background: linear-gradient(to right, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stats-grid {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stat-item {
+            background: rgba(255,255,255,0.05);
+            padding: 12px;
+            border-radius: 16px;
+            min-width: 80px; /* Réduit */
+        }
+        .stat-value {
+            font-size: 1.5rem; /* Réduit */
+            font-weight: 700;
             color: var(--accent);
-            margin-bottom: 10px;
-            font-size: 14px;
+        }
+        .stat-label {
+            font-size: 0.7rem; /* Réduit */
+            color: rgba(255,255,255,0.7);
+        }
+
+        .menu-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .btn {
+            padding: 12px; /* Réduit */
+            border-radius: 40px;
+            border: none;
+            font-weight: 600;
+            font-size: 0.9rem; /* Réduit */
+            cursor: pointer;
+            transition: all 0.3s;
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 8px;
         }
-
-        .install-instructions p {
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 12px;
-            margin: 5px 0;
-            line-height: 1.4;
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white;
+            box-shadow: 0 4px 15px rgba(138,43,226,0.4);
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(138,43,226,0.6);
+        }
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--accent);
+            color: var(--accent);
+        }
+        .btn-outline:hover {
+            background: var(--accent);
+            color: var(--dark);
         }
 
-        /* Animation pour le bouton install */
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); }
-            20%, 40%, 60%, 80% { transform: translateX(2px); }
+        /* Animation de chargement */
+        .loading-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(5px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            display: none;
         }
-
-        .shake {
-            animation: shake 0.5s ease;
+        .spinner {
+            width: 40px; height: 40px;
+            border: 4px solid rgba(255,255,255,0.2);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
         }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* Animations */
-        @keyframes rotate {
-            0% {
-                transform: rotate(0deg);
-            }
-            100% {
-                transform: rotate(360deg);
-            }
-        }
-
+        /* Animations globales */
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes pulse {
-            0%, 100% {
-                transform: scale(1);
-                opacity: 1;
-            }
-            50% {
-                transform: scale(1.2);
-                opacity: 0.7;
-            }
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
         }
 
-        @keyframes gradientShift {
-            0%, 100% {
-                background-position: 0% 50%;
-            }
-            50% {
-                background-position: 100% 50%;
-            }
-        }
-
-        @keyframes fadeIn {
-            to {
-                opacity: 1;
-            }
-        }
-
-        @keyframes float {
-            0% {
-                transform: translateY(100vh) rotate(0deg);
-                opacity: 0;
-            }
-            10% {
-                opacity: 0.5;
-            }
-            90% {
-                opacity: 0.5;
-            }
-            100% {
-                transform: translateY(-100px) rotate(360deg);
-                opacity: 0;
-            }
-        }
-
-        /* Responsive */
-        @media (max-width: 480px) {
-            .loading-container {
-                max-width: 95%;
-                padding: 20px;
-            }
-
-            .logo-wrapper {
-                width: 100px;
-                height: 100px;
-            }
-
-            .logo-center {
-                width: 60px;
-                height: 60px;
-                font-size: 24px;
-            }
-
-            .loading-text {
-                font-size: 1.3rem;
-            }
-
-            .stats-preview {
-                gap: 15px;
-            }
-
-            .stat-preview {
-                padding: 8px 10px;
-                min-width: 70px;
-            }
-
-            .continue-button, .install-button {
-                min-width: 200px;
-                padding: 14px 25px;
-            }
-        }
-
-        /* GameHub branding */
-        .gamehub-brand {
+        /* Notification */
+        .notification-container {
             position: fixed;
             bottom: 20px;
-            left: 0;
-            right: 0;
-            text-align: center;
-            font-size: 0.8rem;
-            color: rgba(255, 255, 255, 0.5);
-            animation: fadeIn 0.5s ease 1.5s forwards;
-            opacity: 0;
-            z-index: 10;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10000;
+            width: auto;
+            max-width: 90%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
-
-        .gamehub-brand span {
-            color: var(--accent);
-            font-weight: 600;
+        .notification {
+            background: rgba(20, 20, 30, 0.9);
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 10px 18px;
+            border-radius: 40px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            border: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 10px;
+            pointer-events: auto;
+            animation: slideUp 0.3s ease-out forwards;
+            transition: opacity 0.3s;
+            max-width: 350px;
+        }
+        .notification.success { border-left: 4px solid var(--success); }
+        .notification.error { border-left: 4px solid #dc3545; }
+        .notification i { font-size: 1rem; }
+        .notification .close-btn {
+            background: transparent;
+            border: none;
+            color: rgba(255,255,255,0.7);
+            cursor: pointer;
+            font-size: 0.9rem;
+            padding: 0 4px;
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
     </style>
 </head>
 <body>
-    <!-- Particles background -->
+    <!-- Particules de fond -->
     <div class="particles" id="particles"></div>
 
-    <div class="loading-container" id="loadingContainer">
-        <!-- Animated logo -->
-        <div class="logo-wrapper">
-            <div class="logo-circle"></div>
-            <div class="logo-circle"></div>
-            <div class="logo-circle"></div>
-            <div class="logo-center" id="logoCenter">
-                <i class="fas fa-dice"></i>
+    <!-- Conteneur des notifications -->
+    <div id="notification-container" class="notification-container"></div>
+
+    <!-- ÉCRAN D'INSTALLATION (visible en mode navigateur) -->
+    <div id="install-screen">
+        <div class="install-logo">
+            <i class="fas fa-dice-d20"></i>
+            <span>GameHub</span>
+        </div>
+        <h2 class="install-title">Installez l'application</h2>
+        <p class="install-subtitle">Pour accéder à GameHub, vous devez installer l'application sur votre appareil.</p>
+
+        <div class="install-cards">
+            <!-- Carte Android -->
+            <div class="install-card" id="android-card">
+                <div class="card-header">
+                    <i class="fab fa-android"></i>
+                    <h3>Android</h3>
+                </div>
+                <button id="android-install-btn" class="btn">
+                    <i class="fas fa-download"></i> Installer
+                </button>
+            </div>
+            <!-- Carte iOS -->
+            <div class="install-card" id="ios-card">
+                <div class="card-header">
+                    <i class="fab fa-apple"></i>
+                    <h3>iPhone / iPad</h3>
+                </div>
+                <div class="ios-steps">
+                    <div class="step"><div class="step-icon"><i class="fas fa-share-alt"></i></div><span class="step-text">Partager</span></div>
+                    <div class="step"><div class="step-icon"><i class="fas fa-plus-circle"></i></div><span class="step-text">Écran d'accueil</span></div>
+                    <div class="step"><div class="step-icon"><i class="fas fa-check"></i></div><span class="step-text">Ajouter</span></div>
+                </div>
+                <div class="ios-note"><i class="fas fa-info-circle"></i> Ouvrez depuis l'écran d'accueil</div>
+            </div>
+        </div>
+        <p style="color: rgba(255,255,255,0.5); font-size: 0.7rem; margin-top: 16px;">
+            Une fois installée, lancez GameHub depuis votre écran d'accueil.
+        </p>
+    </div>
+
+    <!-- ÉCRAN PRINCIPAL (visible uniquement en mode standalone) -->
+    <div id="main-content">
+        <div class="main-logo">
+            <i class="fas fa-dice-d20"></i>
+            <span>GameHub</span>
+        </div>
+        <h1 class="welcome-title">Bienvenue !</h1>
+        <p class="install-subtitle" style="margin-bottom: 8px;">Votre plateforme de gaming ultime</p>
+
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div class="stat-value">10+</div>
+                <div class="stat-label">Jeux</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">30%</div>
+                <div class="stat-label">Commission</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">∞</div>
+                <div class="stat-label">Gains</div>
             </div>
         </div>
 
-        <!-- Loading text -->
-        <div class="loading-text" id="loadingText">Chargement GameHub</div>
-        <div class="loading-subtext" id="loadingSubtext">Préparation de votre expérience gaming ultime</div>
-
-        <!-- Animated dots -->
-        <div class="dots-container">
-            <div class="dot"></div>
-            <div class="dot"></div>
-            <div class="dot"></div>
-        </div>
-
-        <!-- Progress bar -->
-        <div class="progress-container">
-            <div class="progress-bar" id="progressBar"></div>
-        </div>
-
-        <!-- Stats preview -->
-        <div class="stats-preview">
-            <div class="stat-preview">
-                <div class="stat-preview-value">10+</div>
-                <div class="stat-preview-label">Jeux</div>
-            </div>
-            <div class="stat-preview">
-                <div class="stat-preview-value">30%</div>
-                <div class="stat-preview-label">Commission</div>
-            </div>
-            <div class="stat-preview">
-                <div class="stat-preview-value">∞</div>
-                <div class="stat-preview-label">Gains</div>
-            </div>
-        </div>
-
-        <!-- Action Buttons (hidden initially) -->
-        <div class="actions-container" id="actionsContainer">
-            <button class="continue-button" id="continueButton">
-                <i class="fas fa-play"></i> Accéder à GameHub
+        <div class="menu-buttons">
+            <button class="btn btn-primary" onclick="window.location.href='games.html'">
+                <i class="fas fa-play"></i> Voir les jeux
             </button>
-            
-            <button class="install-button" id="installButton">
-                <i class="fas fa-download"></i> Installer l'Application
+            <button class="btn btn-outline" onclick="window.location.href='profile.html'">
+                <i class="fas fa-user"></i> Mon profil
             </button>
-            
-            <div class="install-instructions" id="installInstructions">
-                <h4><i class="fas fa-info-circle"></i> Comment installer :</h4>
-                <p><strong>Android/Chrome :</strong> Menu (⋮) → "Installer l'application"</p>
-                <p><strong>iOS/Safari :</strong> Partager (⎙) → "Sur l'écran d'accueil"</p>
-            </div>
+            <button class="btn btn-outline" onclick="window.location.href='support.html'">
+                <i class="fas fa-headset"></i> Support
+            </button>
         </div>
     </div>
 
-    <!-- Branding -->
-    <div class="gamehub-brand">
-        Plateforme gaming premium • <span>GameHub v2.1.0</span>
+    <!-- Overlay de chargement (optionnel) -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="spinner"></div>
     </div>
 
     <script>
-        // Variables globales - DÉBUT ABSOLU
-        let deferredPrompt = null;
-        let loadingComplete = false;
-        let progressInterval;
-
-        // 1️⃣ CAPTURE IMMÉDIATE du beforeinstallprompt
-        window.addEventListener('beforeinstallprompt', (e) => {
-            console.log('✅ Événement beforeinstallprompt CAPTURÉ IMMÉDIATEMENT');
-            e.preventDefault();
-            deferredPrompt = e;
-            
-            // Optionnel : montre le bouton tout de suite
-            const installButton = document.getElementById('installButton');
-            if (installButton) {
-                installButton.style.display = 'flex';
-                installButton.innerHTML = '<i class="fas fa-download"></i> Installer l\'App (Gratuit)';
+        // Notification manager
+        class NotificationManager {
+            constructor() {
+                this.container = document.getElementById('notification-container');
+                if (!this.container) {
+                    this.container = document.createElement('div');
+                    this.container.id = 'notification-container';
+                    this.container.className = 'notification-container';
+                    document.body.appendChild(this.container);
+                }
             }
-        });
+            show(message, type = 'info', duration = 3000) {
+                const notification = document.createElement('div');
+                notification.className = `notification ${type}`;
+                let icon = 'info-circle';
+                if (type === 'success') icon = 'check-circle';
+                if (type === 'error') icon = 'exclamation-circle';
+                notification.innerHTML = `
+                    <i class="fas fa-${icon}"></i>
+                    <span class="message">${message}</span>
+                    <button class="close-btn" aria-label="Fermer"><i class="fas fa-times"></i></button>
+                `;
+                notification.querySelector('.close-btn').addEventListener('click', () => {
+                    notification.style.opacity = '0';
+                    setTimeout(() => notification.remove(), 300);
+                });
+                this.container.appendChild(notification);
+                if (duration > 0) {
+                    setTimeout(() => {
+                        if (notification.parentNode) {
+                            notification.style.opacity = '0';
+                            setTimeout(() => notification.remove(), 300);
+                        }
+                    }, duration);
+                }
+                return notification;
+            }
+        }
+        const notifier = new NotificationManager();
 
-        // Créer des particules animées
+        // Variables PWA
+        let deferredPrompt = null;
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+        // Éléments DOM
+        const installScreen = document.getElementById('install-screen');
+        const mainContent = document.getElementById('main-content');
+        const androidInstallBtn = document.getElementById('android-install-btn');
+        const iosCard = document.getElementById('ios-card');
+        const loadingOverlay = document.getElementById('loading-overlay');
+
+        // Création des particules
         function createParticles() {
             const particlesContainer = document.getElementById('particles');
-            const particleCount = 20;
-
-            for (let i = 0; i < particleCount; i++) {
+            for (let i = 0; i < 20; i++) {
                 const particle = document.createElement('div');
                 particle.className = 'particle';
-                
-                const size = Math.random() * 15 + 5;
+                const size = Math.random() * 12 + 3; // Réduit
                 particle.style.width = `${size}px`;
                 particle.style.height = `${size}px`;
                 particle.style.left = `${Math.random() * 100}%`;
-                
-                const duration = Math.random() * 20 + 10;
-                const delay = Math.random() * 5;
-                particle.style.animationDuration = `${duration}s`;
-                particle.style.animationDelay = `${delay}s`;
-                
+                particle.style.animationDuration = `${Math.random() * 20 + 10}s`;
+                particle.style.animationDelay = `${Math.random() * 5}s`;
                 particlesContainer.appendChild(particle);
             }
         }
 
-        // Simuler un chargement progressif
-        function simulateLoading() {
-            const progressBar = document.getElementById('progressBar');
-            const actionsContainer = document.getElementById('actionsContainer');
-            
-            const texts = [
-                {main: "Chargement GameHub", sub: "Préparation de votre expérience gaming ultime"},
-                {main: "Initialisation des bots", sub: "Optimisation en cours..."},
-                {main: "Préparation des jeux", sub: "Chargement des ressources..."},
-                {main: "Optimisation des gains", sub: "Configuration des paramètres..."},
-                {main: "Chargement terminé !", sub: "Prêt à générer des gains !"}
-            ];
-
-            let progress = 0;
-            const totalTime = 4000;
-            const intervalTime = 30;
-            const steps = totalTime / intervalTime;
-            const increment = 100 / steps;
-            
-            let textIndex = 0;
-            
-            progressInterval = setInterval(() => {
-                progress += increment;
-                progressBar.style.width = `${Math.min(progress, 100)}%`;
-                
-                // Changer le texte à certains pourcentages
-                if (progress >= 20 && progress < 40 && textIndex < 1) {
-                    textIndex = 1;
-                    updateLoadingText(texts[1]);
-                } else if (progress >= 40 && progress < 60 && textIndex < 2) {
-                    textIndex = 2;
-                    updateLoadingText(texts[2]);
-                } else if (progress >= 60 && progress < 80 && textIndex < 3) {
-                    textIndex = 3;
-                    updateLoadingText(texts[3]);
-                } else if (progress >= 100 && textIndex < 4) {
-                    textIndex = 4;
-                    completeLoading();
+        // Gestion de l'installation
+        function setupInstallPrompt() {
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                deferredPrompt = e;
+                if (androidInstallBtn) {
+                    androidInstallBtn.style.display = 'flex';
                 }
-            }, intervalTime);
+            });
+
+            window.addEventListener('appinstalled', () => {
+                console.log('✅ Application installée');
+                deferredPrompt = null;
+                notifier.show('Application installée avec succès !', 'success');
+            });
         }
 
-        // Mettre à jour le texte de chargement
-        function updateLoadingText(text) {
-            const loadingText = document.getElementById('loadingText');
-            const loadingSubtext = document.getElementById('loadingSubtext');
-            
-            loadingText.style.opacity = 0;
-            loadingSubtext.style.opacity = 0;
-            
-            setTimeout(() => {
-                loadingText.textContent = text.main;
-                loadingSubtext.textContent = text.sub;
-                loadingText.style.opacity = 1;
-                loadingSubtext.style.opacity = 1;
-            }, 300);
-        }
-
-        // Terminer le chargement
-        function completeLoading() {
-            clearInterval(progressInterval);
-            loadingComplete = true;
-            
-            const progressBar = document.getElementById('progressBar');
-            const actionsContainer = document.getElementById('actionsContainer');
-            const loadingText = document.getElementById('loadingText');
-            const loadingSubtext = document.getElementById('loadingSubtext');
-            
-            // Mettre à jour le texte final
-            loadingText.textContent = "Prêt à jouer !";
-            loadingSubtext.textContent = "GameHub est prêt à vous faire gagner";
-            
-            // Animation de la barre de progression terminée
-            progressBar.style.background = "linear-gradient(to right, #28A745, #00FF88)";
-            
-            // Afficher les boutons d'action
-            setTimeout(() => {
-                actionsContainer.classList.add('show');
-                updateInstallButtonUI(); // Mettre à jour l'interface d'installation
-            }, 500);
-            
-            // Petite animation de célébration
-            celebrateCompletion();
-        }
-
-        // Mettre à jour l'interface du bouton d'installation
-        function updateInstallButtonUI() {
-            const installButton = document.getElementById('installButton');
-            const installInstructions = document.getElementById('installInstructions');
-            const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
-                                 window.navigator.standalone;
-            
-            // Si déjà installé
-            if (isStandalone) {
-                installButton.style.display = 'none';
-                installInstructions.classList.add('show');
-                installInstructions.innerHTML = '<h4><i class="fas fa-check-circle"></i> Application déjà installée</h4><p>GameHub est installé sur votre appareil !</p>';
+        // Fonction d'installation
+        async function installApp() {
+            if (!deferredPrompt) {
+                if (isIOS) {
+                    notifier.show('Sur iOS, utilisez le menu Partager > "Sur l\'écran d\'accueil"', 'info', 5000);
+                } else {
+                    notifier.show('L\'installation n\'est pas disponible sur ce navigateur', 'error', 3000);
+                }
                 return;
             }
-            
-            // Si l'installation native est disponible
-            if (deferredPrompt) {
-                installButton.innerHTML = '<i class="fas fa-download"></i> Installer l\'App (Gratuit)';
-                installButton.style.display = 'flex';
-                installInstructions.classList.remove('show');
-            } else {
-                // Sinon, montrer les instructions manuelles
-                installButton.innerHTML = '<i class="fas fa-mobile-alt"></i> Ajouter à l\'écran d\'accueil';
-                installButton.style.display = 'flex';
-                installInstructions.classList.add('show');
-            }
-        }
-
-        // Gérer le clic sur le bouton d'installation - VERSION SIMPLIFIÉE
-        async function handleInstallClick() {
-            console.log('🖱️ Clic sur le bouton d\'installation');
-            
-            if (deferredPrompt) {
-                console.log('🚀 Lancement de l\'installation native...');
-                
-                try {
-                    deferredPrompt.prompt();
-                    const choiceResult = await deferredPrompt.userChoice;
-                    
-                    if (choiceResult.outcome === 'accepted') {
-                        console.log('✅ Utilisateur a accepté l\'installation');
-                        
-                        const installButton = document.getElementById('installButton');
-                        const installInstructions = document.getElementById('installInstructions');
-                        
-                        installButton.innerHTML = '<i class="fas fa-check"></i> Installation réussie !';
-                        installButton.style.background = '#28A745';
-                        installButton.style.borderColor = '#28A745';
-                        installButton.disabled = true;
-                        installInstructions.style.display = 'none';
-                    } else {
-                        console.log('❌ Utilisateur a refusé l\'installation');
-                        const installButton = document.getElementById('installButton');
-                        installButton.classList.add('shake');
-                        setTimeout(() => installButton.classList.remove('shake'), 500);
-                    }
-                    
-                    deferredPrompt = null;
-                } catch (error) {
-                    console.error('Erreur lors de l\'installation:', error);
+            try {
+                deferredPrompt.prompt();
+                const choiceResult = await deferredPrompt.userChoice;
+                if (choiceResult.outcome === 'accepted') {
+                    notifier.show('Installation en cours...', 'info');
+                } else {
+                    notifier.show('Installation annulée', 'info', 2000);
                 }
-            } else {
-                console.log('ℹ️ Installation native non disponible');
-                const installInstructions = document.getElementById('installInstructions');
-                installInstructions.classList.add('show');
-                
-                const installButton = document.getElementById('installButton');
-                installButton.classList.add('shake');
-                setTimeout(() => installButton.classList.remove('shake'), 500);
+                deferredPrompt = null;
+            } catch (error) {
+                console.error('Erreur installation:', error);
+                notifier.show('Erreur lors de l\'installation', 'error');
             }
         }
 
-        // Animation de célébration
-        function celebrateCompletion() {
-            const logoCenter = document.getElementById('logoCenter');
-            logoCenter.style.animation = "pulse 1s ease 3";
-            
-            for (let i = 0; i < 10; i++) {
-                setTimeout(() => {
-                    createCelebrationParticle();
-                }, i * 100);
-            }
-        }
-
-        // Créer une particule de célébration
-        function createCelebrationParticle() {
-            const particlesContainer = document.getElementById('particles');
-            const logoCenter = document.getElementById('logoCenter');
-            const rect = logoCenter.getBoundingClientRect();
-            
-            const particle = document.createElement('div');
-            particle.className = 'particle';
-            particle.style.width = '8px';
-            particle.style.height = '8px';
-            particle.style.left = `${rect.left + rect.width/2}px`;
-            particle.style.top = `${rect.top + rect.height/2}px`;
-            particle.style.background = Math.random() > 0.5 ? 'var(--primary)' : 'var(--accent)';
-            particle.style.animation = 'float 3s ease-out forwards';
-            
-            particlesContainer.appendChild(particle);
-            
-            setTimeout(() => {
-                if (particle.parentNode) {
-                    particle.parentNode.removeChild(particle);
-                }
-            }, 3000);
-        }
-
-        // Enregistrement du Service Worker
-        function registerServiceWorker() {
-            if ('serviceWorker' in navigator) {
-                window.addEventListener('load', () => {
-                    navigator.serviceWorker.register('./service-worker.js')
-                        .then(registration => {
-                            console.log('✅ Service Worker enregistré:', registration.scope);
-                        })
-                        .catch(error => {
-                            console.log('❌ Erreur Service Worker:', error);
-                        });
-                });
-            }
-        }
-
-        // Initialisation
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 Initialisation de GameHub...');
-            console.log('📱 Mode standalone?', window.matchMedia('(display-mode: standalone)').matches);
-            
+        // Initialisation selon le mode
+        function init() {
             createParticles();
-            registerServiceWorker();
-            
-            // Démarrer le chargement
-            simulateLoading();
-            
-            // Clic sur le bouton continuer
-            document.getElementById('continueButton').addEventListener('click', function() {
-                if (!loadingComplete) return;
-                
-                const loadingContainer = document.getElementById('loadingContainer');
-                loadingContainer.style.opacity = '0';
-                loadingContainer.style.transform = 'translateY(-20px)';
-                
+            setupInstallPrompt();
+
+            if (isStandalone) {
+                // Mode application : afficher le contenu principal
+                installScreen.style.display = 'none';
+                mainContent.style.display = 'block';
+                // Animation de chargement simulée
+                loadingOverlay.style.display = 'flex';
                 setTimeout(() => {
-                    window.location.href = 'login.html';
-                }, 500);
-            });
-            
-            // Clic sur le bouton d'installation
-            document.getElementById('installButton').addEventListener('click', handleInstallClick);
-            
-            // Clic sur le logo
-            document.getElementById('logoCenter').addEventListener('click', function() {
-                if (loadingComplete) {
-                    createCelebrationParticle();
+                    loadingOverlay.style.display = 'none';
+                }, 1200);
+            } else {
+                // Mode navigateur : afficher l'écran d'installation
+                installScreen.style.display = 'block';
+                mainContent.style.display = 'none';
+                if (isIOS) {
+                    androidInstallBtn.style.display = 'none';
                 }
-            });
-            
-            // Touche Entrée pour continuer
-            document.addEventListener('keydown', function(e) {
-                if (e.code === 'Enter' && loadingComplete) {
-                    document.getElementById('continueButton').click();
-                }
-            });
-            
-            // Log après 2 secondes pour vérification
-            setTimeout(() => {
-                console.log('🔍 État PWA:', {
-                    deferredPrompt: !!deferredPrompt,
-                    loadingComplete: loadingComplete,
-                    isStandalone: window.matchMedia('(display-mode: standalone)').matches
-                });
-            }, 2000);
-        });
+            }
+
+            // Gestionnaire du bouton d'installation
+            if (androidInstallBtn) {
+                androidInstallBtn.addEventListener('click', installApp);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 </html>
