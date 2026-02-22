@@ -650,14 +650,9 @@
             setupInstallPrompt();
 
             if (isStandalone) {
-                // Mode application : afficher le contenu principal
-                installScreen.style.display = 'none';
-                mainContent.style.display = 'block';
-                // Animation de chargement simulée
-                loadingOverlay.style.display = 'flex';
-                setTimeout(() => {
-                    loadingOverlay.style.display = 'none';
-                }, 1200);
+                // Mode application : rediriger vers la page de connexion
+                window.location.href = 'login.html';
+                return; // Arrêter l'exécution du reste de la fonction
             } else {
                 // Mode navigateur : afficher l'écran d'installation
                 installScreen.style.display = 'block';
